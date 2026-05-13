@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, QrCode, Copy, ShieldCheck, Activity, Zap, Clock, AlertCircle, CheckCircle2, Loader2, ExternalLink } from 'lucide-react';
 
 // ==========================================
-// 1. BUSINESS CONFIGURATION (VIP Logic)
+// 1. VIP CONFIGURATION
 // ==========================================
 const VIP_TIERS = {
   0: { name: "Non-VIP", cost: 0, daily: 0, minWithdraw: 50 },
@@ -27,7 +27,6 @@ const getHighestVip = (user) => {
 // ==========================================
 // 2. REUSABLE UI COMPONENTS
 // ==========================================
-
 const SideBtn = ({ icon, label, active, onClick }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl font-medium transition-all duration-300 ${active ? 'bg-gradient-to-r from-teal-500/20 to-transparent border-l-4 border-teal-400 text-white shadow-[inset_0px_0px_20px_rgba(45,212,191,0.05)]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-4 border-transparent'}`}>
     {icon} <span>{label}</span>
@@ -64,7 +63,6 @@ const UsdtIcon = ({ sizeClass = "w-10 h-10 text-lg" }) => (
 // ==========================================
 // 3. AUTHENTICATION SCREENS
 // ==========================================
-
 const AuthLayout = ({ children }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen flex items-center justify-center p-4 bg-[#0B132B] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#132043] via-[#0B132B] to-[#060B19]">
     <div className="w-full max-w-md bg-white/[0.02] p-8 md:p-10 rounded-3xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] backdrop-blur-xl relative">
@@ -151,61 +149,66 @@ const RegisterScreen = () => {
 };
 
 // ==========================================
-// 4. ENTERPRISE MODALS & SCREENS (Backend API)
+// 4. MULTI-NETWORK DEPOSIT MODAL (NO KYC)
 // ==========================================
-
 const RechargeModal = ({ onClose, onRecharge }) => {
   const [step, setStep] = useState(1);
   const [amount, setAmount] = useState('');
+  const [network, setNetwork] = useState('TRC20');
   const [txId, setTxId] = useState('');
-  
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [apiErrorMsg, setApiErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // Call the Netlify Serverless Backend
-  const openHeleketPaymentAPI = async () => {
-    setIsGenerating(true);
-    setApiErrorMsg('');
+  // 👇 YAHAN AAPKE PERSONAL WALLET ADDRESS HAIN 👇
+  const ADMIN_WALLETS = {
+    "TRC20": "YOUR_TRON_USDT_ADDRESS_HERE", // Yahan apna TRC20 address daalein
+    "BEP20": "0x48bebd0250244c531e4e3558c77fa7b8d7b33963", // Aapka diya gaya BEP20 address
+    "BTC": "YOUR_BITCOIN_ADDRESS_HERE" // Yahan apna BTC address daalein
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    alert("Address Copied! Please send exact amount to this address.");
+  };
+
+  const handleVerify = async () => {
+    if(!txId || txId.length < 10) return setErrorMsg("Please enter a valid Transaction Hash (TxID)");
     
+    setIsVerifying(true);
+    setErrorMsg('');
+
     try {
-      // Direct Netlify backend call karega (CORS bypass!)
-      const response = await fetch('/.netlify/functions/createPayment', {
+      // Netlify Backend ko Request bhejna
+      const response = await fetch('/.netlify/functions/verifyTx', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: parseFloat(amount).toString(),
-          order_id: `THUNDER_${Date.now()}`
+          txId: txId,
+          network: network,
+          expectedAmount: parseFloat(amount),
+          adminAddress: ADMIN_WALLETS[network]
         })
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (data && (data.payment_url || data.url || (data.result && data.result.url))) {
-        const payLink = data.payment_url || data.url || data.result.url;
-        window.open(payLink, '_blank');
-        setIsGenerating(false);
-        setStep(2); 
+      if (result.success) {
+        if (result.isManual) {
+            // BEP20 ya BTC ke liye alert
+            alert(result.message);
+            onClose();
+        } else {
+            // TRC20 Auto Add
+            onRecharge(result.amount || parseFloat(amount));
+        }
       } else {
-        setApiErrorMsg(`API Error (Check URL/Docs): ${JSON.stringify(data)}`);
-        setIsGenerating(false);
+        setErrorMsg(result.message || "Payment verification failed.");
       }
     } catch (error) {
-      console.error(error);
-      setApiErrorMsg("Backend API Call Failed. Did you push the 'netlify/functions' folder to GitHub?");
-      setIsGenerating(false);
-    }
-  };
-
-  const handleVerify = () => {
-    if(!txId || txId.length < 10) return alert("Please enter a valid Transaction Hash (TxID)");
-    setIsVerifying(true);
-    setTimeout(() => {
+      setErrorMsg("System Error during verification. Make sure backend is deployed.");
+    } finally {
       setIsVerifying(false);
-      onRecharge(Number(amount));
-    }, 3500);
+    }
   };
 
   return (
@@ -213,66 +216,66 @@ const RechargeModal = ({ onClose, onRecharge }) => {
       <motion.div initial={{ scale: 0.95 }} className="bg-[#111A3A] w-full max-w-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
         
         <div className="bg-gradient-to-r from-teal-600 to-teal-400 p-6 text-center text-[#0B132B]">
-          <h3 className="font-bold text-xl mb-1">USDT Deposit (Backend Mode)</h3>
-          <p className="text-sm font-medium opacity-80">CORS Bypassed Secure Gateway</p>
+          <h3 className="font-bold text-xl mb-1">Deposit Crypto</h3>
+          <p className="text-sm font-medium opacity-80">Direct Wallet Transfer</p>
         </div>
 
         {isVerifying ? (
            <div className="p-12 flex flex-col items-center justify-center space-y-6">
               <Loader2 size={60} className="text-teal-400 animate-spin" />
-              <h3 className="text-xl font-bold text-white text-center">Verifying Heleket Payment</h3>
-              <p className="text-slate-400 text-sm text-center">Awaiting confirmation from TRON Network blockchain...</p>
+              <h3 className="text-xl font-bold text-white text-center">Verifying Transaction</h3>
+              <p className="text-slate-400 text-sm text-center">Scanning {network} blockchain for your payment...</p>
            </div>
         ) : step === 1 ? (
-          <div className="p-8 space-y-6">
+          <div className="p-8 space-y-5">
             <div>
-              <p className="text-slate-400 text-sm mb-2">Enter Deposit Amount (USDT)</p>
-              <input type="number" placeholder="Min 10 USDT" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0B132B] border border-white/10 p-4 rounded-xl text-white text-xl focus:border-teal-400 focus:outline-none" />
+              <p className="text-slate-400 text-sm mb-2">Deposit Amount (USD)</p>
+              <input type="number" placeholder="Min $10" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0B132B] border border-white/10 p-4 rounded-xl text-white text-xl focus:border-teal-400 focus:outline-none" />
             </div>
-            
-            {apiErrorMsg && (
-                <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg text-red-400 text-xs break-words">
-                  {apiErrorMsg}
-                </div>
-            )}
 
-            <div className="bg-[#0B132B] p-4 rounded-xl border border-white/5 flex items-center gap-3">
-              <ShieldCheck size={24} className="text-teal-400" />
-              <div>
-                <p className="text-sm font-bold text-white">Netlify Server Active</p>
-                <p className="text-[10px] text-slate-500">Connecting via serverless backend</p>
+            <div>
+              <p className="text-slate-400 text-sm mb-2">Select Network</p>
+              <div className="grid grid-cols-3 gap-2">
+                {['TRC20', 'BEP20', 'BTC'].map((net) => (
+                  <button 
+                    key={net} 
+                    onClick={() => setNetwork(net)}
+                    className={`py-3 rounded-xl border text-sm font-bold transition-all ${network === net ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'border-white/10 text-slate-400 hover:border-white/30'}`}
+                  >
+                    {net}
+                  </button>
+                ))}
               </div>
             </div>
-
-            <div className="flex gap-4">
+            
+            <div className="flex gap-4 mt-6">
               <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-white/10 text-slate-300">Cancel</button>
-              
-              <button 
-                disabled={isGenerating}
-                onClick={() => { if(amount >= 10) openHeleketPaymentAPI(); else alert('Minimum deposit is 10 USDT'); }} 
-                className="flex-1 flex justify-center items-center py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold"
-              >
-                {isGenerating ? <Loader2 size={20} className="animate-spin" /> : "Generate Link"}
-              </button>
-
+              <button onClick={() => { if(amount >= 10) setStep(2); else alert('Minimum deposit is $10'); }} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Proceed</button>
             </div>
           </div>
         ) : (
-          <div className="p-8 space-y-6">
-            <div className="text-center">
-              <p className="text-slate-400 text-sm mb-1">Total to Pay</p>
-              <p className="text-4xl font-black text-white">${amount}.00 <span className="text-lg text-teal-400">USDT</span></p>
+          <div className="p-8 space-y-5">
+            <div className="text-center mb-2">
+              <p className="text-slate-400 text-sm mb-1">Send Exactly</p>
+              <p className="text-3xl font-black text-white">${amount}.00 <span className="text-sm text-teal-400">{network === 'BTC' ? 'BTC' : 'USDT'}</span></p>
             </div>
             
-            <div className="bg-teal-500/10 border border-teal-500/30 p-4 rounded-xl text-center">
-                <p className="text-teal-400 text-sm font-medium">Payment Link Generated Successfully! Please complete payment in the new tab.</p>
+            <div className="bg-[#0B132B] p-4 rounded-xl border border-white/5 space-y-3">
+              <div className="flex justify-between items-center">
+                 <p className="text-xs text-slate-400 uppercase tracking-wider">Admin {network} Address</p>
+                 <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-1 rounded">Network: {network}</span>
+              </div>
+              <p className="text-white text-sm break-all font-mono bg-white/5 p-2 rounded-lg">{ADMIN_WALLETS[network]}</p>
+              <button onClick={() => handleCopy(ADMIN_WALLETS[network])} className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2.5 rounded-lg text-teal-400 text-sm font-bold transition-colors">
+                <Copy size={16} /> Copy Address
+              </button>
             </div>
             
-            <p className="text-xs text-slate-500 text-center">After completing your payment, please enter the Transaction Hash (TxID) below to claim your balance.</p>
+            {errorMsg && <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg text-red-400 text-xs break-words text-center">{errorMsg}</div>}
 
-            <div className="bg-[#0B132B] p-4 rounded-2xl border border-white/5">
-              <p className="text-xs text-slate-500 uppercase mb-2">Transaction Hash (TxID)</p>
-              <input type="text" placeholder="Enter TxID after payment..." value={txId} onChange={(e) => setTxId(e.target.value)} className="w-full bg-[#111A3A] border border-white/5 p-3.5 rounded-xl text-white text-sm focus:border-teal-400 focus:outline-none" />
+            <div className="space-y-2">
+              <p className="text-xs text-slate-400 text-center px-4">Pay using Binance/Trust Wallet, then paste your Transaction Hash (TxID) below.</p>
+              <input type="text" placeholder="Paste TxID / Hash here..." value={txId} onChange={(e) => setTxId(e.target.value)} className="w-full bg-[#111A3A] border border-teal-500/30 p-4 rounded-xl text-white text-sm focus:border-teal-400 focus:outline-none" />
             </div>
 
             <div className="flex gap-4">
@@ -323,7 +326,7 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
 };
 
 // ==========================================
-// 5. NETWORK ACTIVITY (Random Generator)
+// 5. LIVE ACTIVITY
 // ==========================================
 const LiveMemberActivity = () => {
   const [activities, setActivities] = useState([]);
@@ -358,9 +361,8 @@ const LiveMemberActivity = () => {
 };
 
 // ==========================================
-// 6. DASHBOARD TABS
+// 6. DASHBOARD SCREENS
 // ==========================================
-
 const HomeTab = ({ user, onAction, onUnlockVip }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
     <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-8">
@@ -566,7 +568,7 @@ const DashboardLayout = () => {
     const updated = { ...user, balance: user.balance + amount, totalRecharge: user.totalRecharge + amount };
     syncUser(updated);
     setShowRecharge(false);
-    alert('Heleket Payment Verified & Added to Wallet!');
+    alert(`Verified! $${amount} has been added to your wallet.`);
   };
 
   const handleVipUnlock = (level, cost) => {
