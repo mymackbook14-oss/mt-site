@@ -161,7 +161,7 @@ const RechargeModal = ({ onClose, onRecharge }) => {
 
   // 👇 YAHAN AAPKE PERSONAL WALLET ADDRESS HAIN 👇
   const ADMIN_WALLETS = {
-    "TRC20": "YOUR_TRON_USDT_ADDRESS_HERE", // Yahan apna TRC20 address daalein
+    "TRC20": "UQBK2vhnxCbEVLhdjmaQMZiH6LHJi_o3jjf21r4lT4IUai5R", // Yahan apna TRC20 address daalein
     "BEP20": "0x48bebd0250244c531e4e3558c77fa7b8d7b33963", // Aapka diya gaya BEP20 address
     "BTC": "YOUR_BITCOIN_ADDRESS_HERE" // Yahan apna BTC address daalein
   };
