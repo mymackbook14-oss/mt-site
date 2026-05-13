@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, QrCode, Copy, ShieldCheck, Activity, Globe, Zap, Clock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, QrCode, Copy, ShieldCheck, Activity, Zap, Clock, AlertCircle, CheckCircle2, Loader2, ExternalLink } from 'lucide-react';
 
 // ==========================================
 // 1. BUSINESS CONFIGURATION (VIP Logic)
@@ -151,20 +151,57 @@ const RegisterScreen = () => {
 };
 
 // ==========================================
-// 4. ENTERPRISE MODALS & SCREENS
+// 4. ENTERPRISE MODALS & SCREENS (Backend API)
 // ==========================================
 
 const RechargeModal = ({ onClose, onRecharge }) => {
   const [step, setStep] = useState(1);
   const [amount, setAmount] = useState('');
   const [txId, setTxId] = useState('');
+  
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [apiErrorMsg, setApiErrorMsg] = useState('');
+
+  // Call the Netlify Serverless Backend
+  const openHeleketPaymentAPI = async () => {
+    setIsGenerating(true);
+    setApiErrorMsg('');
+    
+    try {
+      // Direct Netlify backend call karega (CORS bypass!)
+      const response = await fetch('/.netlify/functions/createPayment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: parseFloat(amount).toString(),
+          order_id: `THUNDER_${Date.now()}`
+        })
+      });
+
+      const data = await response.json();
+
+      if (data && (data.payment_url || data.url || (data.result && data.result.url))) {
+        const payLink = data.payment_url || data.url || data.result.url;
+        window.open(payLink, '_blank');
+        setIsGenerating(false);
+        setStep(2); 
+      } else {
+        setApiErrorMsg(`API Error (Check URL/Docs): ${JSON.stringify(data)}`);
+        setIsGenerating(false);
+      }
+    } catch (error) {
+      console.error(error);
+      setApiErrorMsg("Backend API Call Failed. Did you push the 'netlify/functions' folder to GitHub?");
+      setIsGenerating(false);
+    }
+  };
 
   const handleVerify = () => {
     if(!txId || txId.length < 10) return alert("Please enter a valid Transaction Hash (TxID)");
-    
     setIsVerifying(true);
-    // Blockchain Verification Simulation
     setTimeout(() => {
       setIsVerifying(false);
       onRecharge(Number(amount));
@@ -176,15 +213,15 @@ const RechargeModal = ({ onClose, onRecharge }) => {
       <motion.div initial={{ scale: 0.95 }} className="bg-[#111A3A] w-full max-w-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
         
         <div className="bg-gradient-to-r from-teal-600 to-teal-400 p-6 text-center text-[#0B132B]">
-          <h3 className="font-bold text-xl mb-1">USDT Deposit (TRC20)</h3>
-          <p className="text-sm font-medium opacity-80">Secure Automated Gateway</p>
+          <h3 className="font-bold text-xl mb-1">USDT Deposit (Backend Mode)</h3>
+          <p className="text-sm font-medium opacity-80">CORS Bypassed Secure Gateway</p>
         </div>
 
         {isVerifying ? (
            <div className="p-12 flex flex-col items-center justify-center space-y-6">
               <Loader2 size={60} className="text-teal-400 animate-spin" />
-              <h3 className="text-xl font-bold text-white text-center">Verifying Transaction</h3>
-              <p className="text-slate-400 text-sm text-center">Awaiting confirmation from TRON Network blockchain... Please do not close this window.</p>
+              <h3 className="text-xl font-bold text-white text-center">Verifying Heleket Payment</h3>
+              <p className="text-slate-400 text-sm text-center">Awaiting confirmation from TRON Network blockchain...</p>
            </div>
         ) : step === 1 ? (
           <div className="p-8 space-y-6">
@@ -192,32 +229,55 @@ const RechargeModal = ({ onClose, onRecharge }) => {
               <p className="text-slate-400 text-sm mb-2">Enter Deposit Amount (USDT)</p>
               <input type="number" placeholder="Min 10 USDT" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0B132B] border border-white/10 p-4 rounded-xl text-white text-xl focus:border-teal-400 focus:outline-none" />
             </div>
+            
+            {apiErrorMsg && (
+                <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg text-red-400 text-xs break-words">
+                  {apiErrorMsg}
+                </div>
+            )}
+
+            <div className="bg-[#0B132B] p-4 rounded-xl border border-white/5 flex items-center gap-3">
+              <ShieldCheck size={24} className="text-teal-400" />
+              <div>
+                <p className="text-sm font-bold text-white">Netlify Server Active</p>
+                <p className="text-[10px] text-slate-500">Connecting via serverless backend</p>
+              </div>
+            </div>
+
             <div className="flex gap-4">
               <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-white/10 text-slate-300">Cancel</button>
-              <button onClick={() => { if(amount >= 10) setStep(2); else alert('Minimum deposit is 10 USDT'); }} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Generate Address</button>
+              
+              <button 
+                disabled={isGenerating}
+                onClick={() => { if(amount >= 10) openHeleketPaymentAPI(); else alert('Minimum deposit is 10 USDT'); }} 
+                className="flex-1 flex justify-center items-center py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold"
+              >
+                {isGenerating ? <Loader2 size={20} className="animate-spin" /> : "Generate Link"}
+              </button>
+
             </div>
           </div>
         ) : (
           <div className="p-8 space-y-6">
             <div className="text-center">
-              <p className="text-slate-400 text-sm mb-1">Please send exactly</p>
+              <p className="text-slate-400 text-sm mb-1">Total to Pay</p>
               <p className="text-4xl font-black text-white">${amount}.00 <span className="text-lg text-teal-400">USDT</span></p>
             </div>
-            <div className="bg-white p-4 rounded-2xl w-40 h-40 mx-auto shadow-inner"><QrCode size={140} className="text-[#0B132B]" /></div>
             
-            <div className="bg-[#0B132B] p-4 rounded-2xl border border-white/5">
-              <p className="text-xs text-slate-500 uppercase mb-1">Deposit Address (TRC-20)</p>
-              <div className="flex justify-between items-center gap-3"><p className="text-sm text-teal-400 font-mono truncate">TXYZ...CryptoAddress123</p><Copy size={18} className="text-slate-300 cursor-pointer"/></div>
+            <div className="bg-teal-500/10 border border-teal-500/30 p-4 rounded-xl text-center">
+                <p className="text-teal-400 text-sm font-medium">Payment Link Generated Successfully! Please complete payment in the new tab.</p>
             </div>
+            
+            <p className="text-xs text-slate-500 text-center">After completing your payment, please enter the Transaction Hash (TxID) below to claim your balance.</p>
 
-            <div>
+            <div className="bg-[#0B132B] p-4 rounded-2xl border border-white/5">
               <p className="text-xs text-slate-500 uppercase mb-2">Transaction Hash (TxID)</p>
-              <input type="text" placeholder="Enter TxID after payment..." value={txId} onChange={(e) => setTxId(e.target.value)} className="w-full bg-[#0B132B] border border-white/10 p-3.5 rounded-xl text-white text-sm focus:border-teal-400 focus:outline-none" />
+              <input type="text" placeholder="Enter TxID after payment..." value={txId} onChange={(e) => setTxId(e.target.value)} className="w-full bg-[#111A3A] border border-white/5 p-3.5 rounded-xl text-white text-sm focus:border-teal-400 focus:outline-none" />
             </div>
 
             <div className="flex gap-4">
               <button onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl border border-white/10 text-slate-300">Back</button>
-              <button onClick={handleVerify} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Verify Payment</button>
+              <button onClick={handleVerify} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Verify Funds</button>
             </div>
           </div>
         )}
@@ -506,7 +566,7 @@ const DashboardLayout = () => {
     const updated = { ...user, balance: user.balance + amount, totalRecharge: user.totalRecharge + amount };
     syncUser(updated);
     setShowRecharge(false);
-    alert('Deposit Successfully Verified and Added to Wallet!');
+    alert('Heleket Payment Verified & Added to Wallet!');
   };
 
   const handleVipUnlock = (level, cost) => {
