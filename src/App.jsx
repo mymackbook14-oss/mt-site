@@ -154,138 +154,96 @@ const RegisterScreen = () => {
 // 4. MANUAL MULTI-NETWORK DEPOSIT MODAL 
 // ==========================================
 
-const RechargeModal = ({ onClose, onRecharge }) => {
-  const [step, setStep] = useState(1);
+// ==========================================
+// 4. PLISIO AUTOMATIC DEPOSIT MODAL
+// ==========================================
+const RechargeModal = ({ onClose }) => {
   const [amount, setAmount] = useState('');
-  const [network, setNetwork] = useState('USDT (TON)');
-  const [txId, setTxId] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [network, setNetwork] = useState('USDT_TRX'); 
+  const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 👇 YAHAN AAPKE ASLI WALLET ADDRESSES HAIN 👇
-  const ADMIN_WALLETS = {
-    "USDT (TON)": "UQBK2vhnxCbEVLhdjmaQMZiH6LHJi_o3jjf21r4lT4IUai5R", 
-    "TRC20": "T_DUMMY_TRON_ADDRESS_REPLACE_ME", 
-    "BEP20": "0x48bebd0250244c531e4e3558c77fa7b8d7b33963"
-  };
-
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    alert("Address Copied!");
-  };
-
-  const handleVerify = async () => {
-    if(!txId || txId.length < 10) return setErrorMsg("Please enter a valid Transaction Hash (TxID)");
+  const handlePayNow = async () => {
+    if (!amount || parseFloat(amount) < 10) return setErrorMsg("Minimum deposit is $10");
     
-    setIsVerifying(true);
+    setIsLoading(true);
     setErrorMsg('');
 
     try {
-      const response = await fetch('/.netlify/functions/verifyTx', {
+      const response = await fetch('/.netlify/functions/createInvoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          txId: txId,
-          network: network,
-          expectedAmount: parseFloat(amount),
-          adminAddress: ADMIN_WALLETS[network]
+          amount: parseFloat(amount),
+          currency: network // Example: USDT_TRX, USDT_BSC, TON
         })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        if(result.isManual) {
-          alert(result.message); // For TON/BEP20 pending
-          onClose();
-        } else {
-          onRecharge(result.amount || parseFloat(amount));
-        }
+        // User ko Plisio ke payment page par bhej dena
+        window.location.href = result.checkoutUrl;
       } else {
-        setErrorMsg(result.message || "Payment verification failed.");
+        setErrorMsg(result.message || "Could not generate payment link.");
       }
     } catch (error) {
-      setErrorMsg("System Error during verification. Make sure backend is deployed.");
+      setErrorMsg("System error. Check if backend is deployed.");
     } finally {
-      setIsVerifying(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B132B]/90 backdrop-blur-md">
-      <motion.div initial={{ scale: 0.95 }} className="bg-[#111A3A] w-full max-w-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B132B]/90 backdrop-blur-md">
+      <div className="bg-[#111A3A] w-full max-w-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
         
         <div className="bg-gradient-to-r from-teal-600 to-teal-400 p-6 text-center text-[#0B132B]">
-          <h3 className="font-bold text-xl mb-1">Deposit Funds</h3>
-          <p className="text-sm font-medium opacity-80">Secure Multi-Chain Gateway</p>
+          <h3 className="font-bold text-xl mb-1">Add Funds via Plisio</h3>
+          <p className="text-sm font-medium opacity-80">Instant No-KYC Deposit</p>
         </div>
 
-        {isVerifying ? (
+        {isLoading ? (
            <div className="p-12 flex flex-col items-center justify-center space-y-6">
-              <Loader2 size={60} className="text-teal-400 animate-spin" />
-              <h3 className="text-xl font-bold text-white text-center">Verifying Blockchain</h3>
-              <p className="text-slate-400 text-sm text-center">Scanning {network} network for your transaction...</p>
+              <h3 className="text-xl font-bold text-white text-center">Generating Invoice...</h3>
+              <p className="text-slate-400 text-sm text-center">Redirecting to secure gateway</p>
            </div>
-        ) : step === 1 ? (
+        ) : (
           <div className="p-8 space-y-5">
             <div>
-              <p className="text-slate-400 text-sm mb-2">Deposit Amount (USD)</p>
+              <p className="text-slate-400 text-sm mb-2">Deposit Amount ($ USD)</p>
               <input type="number" placeholder="Min $10" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0B132B] border border-white/10 p-4 rounded-xl text-white text-xl focus:border-teal-400 focus:outline-none" />
             </div>
 
             <div>
-              <p className="text-slate-400 text-sm mb-2">Select Network</p>
+              <p className="text-slate-400 text-sm mb-2">Select Crypto</p>
               <div className="grid grid-cols-3 gap-2">
-                {['USDT (TON)', 'TRC20', 'BEP20'].map((net) => (
+                {[
+                  { id: 'USDT_TRX', name: 'USDT (TRC20)' },
+                  { id: 'USDT_BSC', name: 'USDT (BEP20)' },
+                  { id: 'TON', name: 'TON Coin' }
+                ].map((coin) => (
                   <button 
-                    key={net} 
-                    onClick={() => setNetwork(net)}
-                    className={`py-3 rounded-xl border text-[11px] font-bold transition-all ${network === net ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'border-white/10 text-slate-400 hover:border-white/30'}`}
+                    key={coin.id} 
+                    onClick={() => setNetwork(coin.id)}
+                    className={`py-3 rounded-xl border text-[10px] font-bold transition-all ${network === coin.id ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'border-white/10 text-slate-400 hover:border-white/30'}`}
                   >
-                    {net}
+                    {coin.name}
                   </button>
                 ))}
               </div>
             </div>
             
+            {errorMsg && <div className="text-red-400 text-xs text-center font-bold bg-red-500/10 p-2 rounded-lg">{errorMsg}</div>}
+
             <div className="flex gap-4 mt-6">
               <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-white/10 text-slate-300">Cancel</button>
-              <button onClick={() => { if(amount >= 10) setStep(2); else alert('Minimum deposit is $10'); }} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Proceed</button>
-            </div>
-          </div>
-        ) : (
-          <div className="p-8 space-y-5">
-            <div className="text-center mb-2">
-              <p className="text-slate-400 text-sm mb-1">Send Exactly</p>
-              <p className="text-3xl font-black text-white">${amount}.00 <span className="text-sm text-teal-400">USDT</span></p>
-            </div>
-            
-            <div className="bg-[#0B132B] p-4 rounded-xl border border-white/5 space-y-3">
-              <div className="flex justify-between items-center">
-                 <p className="text-xs text-slate-400 uppercase tracking-wider">Admin {network} Address</p>
-                 <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-1 rounded">Network: {network}</span>
-              </div>
-              <p className="text-white text-xs break-all font-mono bg-white/5 p-2 rounded-lg">{ADMIN_WALLETS[network]}</p>
-              <button onClick={() => handleCopy(ADMIN_WALLETS[network])} className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2.5 rounded-lg text-teal-400 text-sm font-bold transition-colors">
-                <Copy size={16} /> Copy Address
-              </button>
-            </div>
-            
-            {errorMsg && <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg text-red-400 text-xs break-words text-center">{errorMsg}</div>}
-
-            <div className="space-y-2">
-              <p className="text-xs text-slate-400 text-center px-4">After sending the payment via Wallet, paste the Transaction Hash (TxID) below.</p>
-              <input type="text" placeholder="Paste TxID / Hash here..." value={txId} onChange={(e) => setTxId(e.target.value)} className="w-full bg-[#111A3A] border border-teal-500/30 p-4 rounded-xl text-white text-sm focus:border-teal-400 focus:outline-none" />
-            </div>
-
-            <div className="flex gap-4">
-              <button onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl border border-white/10 text-slate-300">Back</button>
-              <button onClick={handleVerify} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Verify Payment</button>
+              <button onClick={handlePayNow} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Pay via Plisio</button>
             </div>
           </div>
         )}
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 };
 
