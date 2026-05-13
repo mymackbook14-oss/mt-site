@@ -16,47 +16,51 @@ exports.handler = async (event) => {
       if (!response.ok) throw new Error("Hash not found on TON blockchain.");
       const data = await response.json();
 
-      // Pura actions list search karna
-      const transferAction = data.actions?.find(action => 
-        action.type === 'JettonTransfer' && 
-        action.jetton_transfer?.jetton.symbol === 'USDT'
-      );
+      let verified = false;
+      let actualAmount = 0;
 
-      if (transferAction) {
-        const jetton = transferAction.jetton_transfer;
-        const recipient = jetton.recipient?.address || "";
-        const actualAmount = parseFloat(jetton.amount) / 1000000;
+      // 🔥 DEEP SCAN LOGIC 🔥
+      // Hum har action ko check karenge, chahe woh kisi bhi type ka ho
+      if (data.actions && data.actions.length > 0) {
+        for (const action of data.actions) {
+          // JettonTransfer dhoondna
+          const jetton = action.jetton_transfer || (action.type === 'JettonTransfer' ? action : null);
+          
+          if (jetton && (jetton.jetton_transfer || jetton.amount)) {
+            const transfer = jetton.jetton_transfer || jetton;
+            const recipient = transfer.recipient?.address || "";
+            const symbol = transfer.jetton?.symbol || "";
+            
+            // Decimal fix (USDT on TON is 6 decimals)
+            actualAmount = parseFloat(transfer.amount) / 1000000;
 
-        // 🔥 ULTIMATE MATCHING LOGIC 🔥
-        // TON addresses ke prefix (UQ/EQ) aur checksum ko puri tarah ignore karke
-        // hum sirf middle ke 30 unique characters match karenge.
-        const clean = (addr) => addr.replace(/[^a-zA-Z0-9]/g, '');
-        
-        const coreRecipient = clean(recipient);
-        const coreAdmin = clean(adminAddress);
+            // Address Matching (Ignore UQ/EQ prefix)
+            const normalize = (addr) => addr.replace(/^(UQ|EQ)/, '').substring(0, 32).toLowerCase();
+            const targetAddress = "UQBK2vhnxCbEVLhdjmaQMZiH6LHJi_o3jjf21r4lT4IUai5R"; // From your screenshot
 
-        // Substring check: Agar admin address ka bada hissa recipient mein maujood hai
-        if (coreRecipient.includes(coreAdmin.substring(4, 34))) {
-          if (actualAmount >= expectedAmount - 0.1) {
-            return { 
-              statusCode: 200, 
-              headers: { 'Access-Control-Allow-Origin': '*' }, 
-              body: JSON.stringify({ success: true, amount: actualAmount }) 
-            };
+            if (normalize(recipient) === normalize(targetAddress)) {
+              if (actualAmount >= expectedAmount - 0.1) {
+                verified = true;
+                break; 
+              }
+            }
           }
         }
+      }
 
-        // Agar match nahi hua, toh debug ke liye dono addresses wapas bhejna
+      if (verified) {
         return { 
           statusCode: 200, 
           headers: { 'Access-Control-Allow-Origin': '*' }, 
-          body: JSON.stringify({ 
-            success: false, 
-            message: `Address Mismatch! Blockchain: ${recipient.substring(0,10)}... vs Your Code: ${adminAddress.substring(0,10)}...` 
-          }) 
+          body: JSON.stringify({ success: true, amount: actualAmount }) 
         };
       }
-      return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "No USDT transfer found in this Hash." }) };
+      
+      return { 
+        statusCode: 200, 
+        headers: { 'Access-Control-Allow-Origin': '*' }, 
+        body: JSON.stringify({ success: false, message: "System could not link this Hash to your wallet." }) 
+      };
     }
 
     // TRC20 Logic
@@ -75,6 +79,6 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Verification failed." }) };
 
   } catch (error) {
-    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Error: " + error.message }) };
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: error.message }) };
   }
 };
