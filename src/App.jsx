@@ -164,7 +164,7 @@ const RechargeModal = ({ onClose }) => {
   const [errorMsg, setErrorMsg] = useState('');
 
   const handlePayNow = async () => {
-    if (!amount || parseFloat(amount) < 10) return setErrorMsg("Minimum deposit is $10");
+    if (!amount || parseFloat(amount) < 1) return setErrorMsg("Minimum deposit is $10");
     
     setIsLoading(true);
     setErrorMsg('');
