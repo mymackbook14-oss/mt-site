@@ -27,18 +27,20 @@ exports.handler = async (event) => {
         const recipient = jetton.recipient?.address || "";
         const actualAmount = parseFloat(jetton.amount) / 1000000;
 
-        // 🔥 PRO ADDRESS MATCHING 🔥
-        // TON addresses ke prefix aur format ki fikar kiye bina 
-        // hum sirf wallet ke unique characters ko match karenge.
-        const cleanAddress = (addr) => {
-          // Address ke beech ke main characters uthana (Prefix aur Checksum hata kar)
-          return addr.replace(/[^a-zA-Z0-9]/g, '').substring(10, 40).toLowerCase();
+        // 🔥 ULTRA-ROBUST MATCHING 🔥
+        // Hum address ke shuruat ke 4 aur aakhri 4 akshar hata denge 
+        // kyunki UQ/EQ aur checksum wahi hota hai. Beech ka part same rehta hai.
+        const getCore = (addr) => {
+            if (!addr) return "";
+            // Special characters hatao aur sirf beech ka main part uthao
+            return addr.replace(/[^a-zA-Z0-9]/g, '').slice(4, -4);
         };
         
-        const coreRecipient = cleanAddress(recipient);
-        const coreAdmin = cleanAddress(adminAddress);
+        const coreRecipient = getCore(recipient);
+        const coreAdmin = getCore(adminAddress);
 
-        if (coreRecipient === coreAdmin) {
+        // Agar core ID match ho gayi toh payment pakki hai
+        if (coreRecipient !== "" && coreRecipient === coreAdmin) {
           if (actualAmount >= expectedAmount - 0.1) {
             return { 
               statusCode: 200, 
@@ -52,11 +54,11 @@ exports.handler = async (event) => {
       return { 
         statusCode: 200, 
         headers: { 'Access-Control-Allow-Origin': '*' }, 
-        body: JSON.stringify({ success: false, message: "Mismatch: Wallet IDs don't match on blockchain." }) 
+        body: JSON.stringify({ success: false, message: "Mismatch: Address core does not match. Ensure you sent to your registered wallet." }) 
       };
     }
 
-    // TRC20 Logic
+    // TRC20 Logic (Aapka purana logic safe hai)
     if (network === 'TRC20') {
       const resp = await fetch(`https://apilist.tronscan.org/api/transaction-info?hash=${txId}`);
       const d = await resp.json();
@@ -69,9 +71,9 @@ exports.handler = async (event) => {
       }
     }
 
-    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Verification failed." }) };
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Verification failed. Hash records do not match requirements." }) };
 
   } catch (error) {
-    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Network Error: " + error.message }) };
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Blockchain API Error: " + error.message }) };
   }
 };
