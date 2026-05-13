@@ -16,7 +16,7 @@ exports.handler = async (event) => {
       if (!response.ok) throw new Error("Hash not found on TON Network.");
       const data = await response.json();
 
-      // Pura actions list search karna
+      // USDT Transfer dhoondhna
       const transferAction = data.actions?.find(action => 
         action.type === 'JettonTransfer' && 
         action.jetton_transfer?.jetton.symbol === 'USDT'
@@ -27,16 +27,18 @@ exports.handler = async (event) => {
         const recipient = jetton.recipient?.address || "";
         const actualAmount = parseFloat(jetton.amount) / 1000000;
 
-        // 🔥 ROBUST ADDRESS MATCHING 🔥
-        // TON addresses ke formats handle karne ke liye hum sirf core string match karenge
-        const getCore = (addr) => addr.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        // 🔥 PRO ADDRESS MATCHING 🔥
+        // TON addresses ke prefix aur format ki fikar kiye bina 
+        // hum sirf wallet ke unique characters ko match karenge.
+        const cleanAddress = (addr) => {
+          // Address ke beech ke main characters uthana (Prefix aur Checksum hata kar)
+          return addr.replace(/[^a-zA-Z0-9]/g, '').substring(10, 40).toLowerCase();
+        };
         
-        // Admin address aur Recipient address dono ka core nikal kar check karna
-        const coreRecipient = getCore(recipient);
-        const coreAdmin = getCore(adminAddress);
+        const coreRecipient = cleanAddress(recipient);
+        const coreAdmin = cleanAddress(adminAddress);
 
-        // Agar recipient ke core mein admin core chupa hai ya vice versa
-        if (coreRecipient.includes(coreAdmin) || coreAdmin.includes(coreRecipient)) {
+        if (coreRecipient === coreAdmin) {
           if (actualAmount >= expectedAmount - 0.1) {
             return { 
               statusCode: 200, 
@@ -50,11 +52,11 @@ exports.handler = async (event) => {
       return { 
         statusCode: 200, 
         headers: { 'Access-Control-Allow-Origin': '*' }, 
-        body: JSON.stringify({ success: false, message: "Address Mismatch: System detected a different receiver wallet." }) 
+        body: JSON.stringify({ success: false, message: "Mismatch: Wallet IDs don't match on blockchain." }) 
       };
     }
 
-    // TRC20 Verification
+    // TRC20 Logic
     if (network === 'TRC20') {
       const resp = await fetch(`https://apilist.tronscan.org/api/transaction-info?hash=${txId}`);
       const d = await resp.json();
@@ -70,6 +72,6 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Verification failed." }) };
 
   } catch (error) {
-    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Blockchain Error: " + error.message }) };
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Network Error: " + error.message }) };
   }
 };
