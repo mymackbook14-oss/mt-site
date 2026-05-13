@@ -11,69 +11,62 @@ exports.handler = async (event) => {
   try {
     const { txId, network, expectedAmount, adminAddress } = JSON.parse(event.body);
 
-    // 1. USDT (TON) Automatic Verification (Using TonAPI.io)
+    // 1. USDT (TON) Automatic Verification
     if (network === 'USDT (TON)') {
+      // TonAPI.io se data mangwana
       const response = await fetch(`https://tonapi.io/v2/events/${txId}`);
+      if (!response.ok) throw new Error("Transaction not found. Check TxID again.");
+      
       const data = await response.json();
 
-      if (!data || !data.actions) {
-        return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Transaction not found on TON blockchain." }) };
-      }
-
-      // Check for JettonTransfer (USDT is a Jetton on TON)
+      // Jetton Transfer (USDT) check karna
       const transferAction = data.actions.find(action => action.type === 'JettonTransfer');
       
       if (transferAction) {
         const jetton = transferAction.jetton_transfer;
-        const recipient = jetton.recipient.address;
+        const recipient = jetton.recipient.address; 
         const symbol = jetton.jetton.symbol;
-        const actualAmount = parseFloat(jetton.amount) / 1000000; // USDT decimals is 6
+        const actualAmount = parseFloat(jetton.amount) / 1000000;
 
-        // Address verification (Check if it's your wallet)
-        if (recipient.toLowerCase() === adminAddress.toLowerCase() && symbol === 'USDT') {
-          if (actualAmount >= expectedAmount) {
+        // 🔥 ADDRESS MATCHING LOGIC FIX 🔥
+        // TON addresses ke prefix (UQ/EQ) alag ho sakte hain, isiliye hum main part compare karenge
+        const normalize = (addr) => addr.replace(/^(UQ|EQ)/, '').substring(0, 30).toLowerCase();
+
+        if (normalize(recipient) === normalize(adminAddress) && symbol === 'USDT') {
+          // 100 USDT match karna
+          if (actualAmount >= expectedAmount - 0.1) { 
             return { 
               statusCode: 200, 
               headers: { 'Access-Control-Allow-Origin': '*' }, 
-              body: JSON.stringify({ success: true, amount: actualAmount, isManual: false }) 
+              body: JSON.stringify({ success: true, amount: actualAmount }) 
             };
           }
         }
       }
-      return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "USDT Payment mismatch on TON Network." }) };
-    }
-
-    // 2. TRC20 Verification (TronScan) - Auto
-    if (network === 'TRC20') {
-      const response = await fetch(`https://apilist.tronscan.org/api/transaction-info?hash=${txId}`);
-      const data = await response.json();
-
-      if (data && data.contractRet === 'SUCCESS') {
-        const transfer = data.trc20TransferInfo && data.trc20TransferInfo[0];
-        if (transfer && transfer.to_address.toLowerCase() === adminAddress.toLowerCase()) {
-          const actualAmount = parseFloat(transfer.amount_str) / 1000000;
-          if (actualAmount >= expectedAmount) {
-            return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: true, amount: actualAmount, isManual: false }) };
-          }
-        }
-      }
-      return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Transaction mismatch or not found on Tron." }) };
-    } 
-
-    // 3. BEP20 - Manual Review (Iske liye BscScan API Key chahiye hoti hai)
-    else {
       return { 
         statusCode: 200, 
         headers: { 'Access-Control-Allow-Origin': '*' }, 
-        body: JSON.stringify({ 
-          success: true, 
-          isManual: true, 
-          message: "Transaction received! Admin is verifying your BEP20 payment." 
-        }) 
+        body: JSON.stringify({ success: false, message: "USDT Payment mismatch. Ensure you sent to the correct address." }) 
       };
     }
 
+    // 2. TRC20 Logic (Pehle jaisa)
+    if (network === 'TRC20') {
+      const response = await fetch(`https://apilist.tronscan.org/api/transaction-info?hash=${txId}`);
+      const data = await response.json();
+      if (data && data.contractRet === 'SUCCESS') {
+        const transfer = data.trc20TransferInfo && data.trc20TransferInfo[0];
+        if (transfer && transfer.to_address.toLowerCase() === adminAddress.toLowerCase()) {
+          const amt = parseFloat(transfer.amount_str) / 1000000;
+          if (amt >= expectedAmount - 0.1) return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: true, amount: amt }) };
+        }
+      }
+      return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "TRC20 Verification Failed." }) };
+    }
+
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: true, isManual: true, message: "Admin is manually reviewing this hash." }) };
+
   } catch (error) {
-    return { statusCode: 500, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: error.message }) };
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: error.message }) };
   }
 };
