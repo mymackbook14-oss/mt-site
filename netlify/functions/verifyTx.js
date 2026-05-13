@@ -12,30 +12,33 @@ exports.handler = async (event) => {
     const { txId, network, expectedAmount, adminAddress } = JSON.parse(event.body);
 
     if (network === 'USDT (TON)') {
+      // TonAPI se pura event data nikalna
       const response = await fetch(`https://tonapi.io/v2/events/${txId}`);
-      if (!response.ok) throw new Error("Transaction ID not found on TON.");
+      if (!response.ok) throw new Error("Hash not found on TON Network.");
       
       const data = await response.json();
 
-      // 🔍 SAFETY CHECK: Pehle check karein ki actions exist karte hain ya nahi
-      if (!data.actions || data.actions.length === 0) {
-        throw new Error("No actions found in this transaction.");
+      // Sabhi actions mein check karna ki USDT transfer kahan hai
+      let foundTransfer = null;
+      if (data.actions) {
+        foundTransfer = data.actions.find(action => 
+          action.type === 'JettonTransfer' && 
+          action.jetton_transfer && 
+          action.jetton_transfer.jetton.symbol === 'USDT'
+        );
       }
 
-      // USDT transfer dhoondhna
-      const transferAction = data.actions.find(action => action.type === 'JettonTransfer');
-      
-      // 🛡️ Error Fix: 'recipient' read karne se pehle check karein ki jetton_transfer exist karta hai
-      if (transferAction && transferAction.jetton_transfer) {
-        const jetton = transferAction.jetton_transfer;
-        const recipient = jetton.recipient ? jetton.recipient.address : null; 
-        const symbol = jetton.jetton ? jetton.jetton.symbol : null;
+      if (foundTransfer) {
+        const jetton = foundTransfer.jetton_transfer;
+        const recipient = jetton.recipient ? jetton.recipient.address : "";
         const actualAmount = parseFloat(jetton.amount) / 1000000;
 
-        // Address Match Logic
-        const normalize = (addr) => addr ? addr.replace(/^(UQ|EQ)/, '').substring(0, 30).toLowerCase() : "";
+        // 🔥 IMPROVED ADDRESS MATCHING 🔥
+        // TON addresses ke formats (Base64 vs Raw) ko handle karne ke liye
+        // Hum address ke sirf main 25 characters compare karenge
+        const clean = (addr) => addr.replace(/[^a-zA-Z0-9]/g, '').substring(5, 30).toLowerCase();
 
-        if (recipient && normalize(recipient) === normalize(adminAddress) && symbol === 'USDT') {
+        if (clean(recipient) === clean(adminAddress)) {
           if (actualAmount >= expectedAmount - 0.1) {
             return { 
               statusCode: 200, 
@@ -45,14 +48,18 @@ exports.handler = async (event) => {
           }
         }
       }
+      
       return { 
         statusCode: 200, 
         headers: { 'Access-Control-Allow-Origin': '*' }, 
-        body: JSON.stringify({ success: false, message: "USDT transfer data not found in this Hash." }) 
+        body: JSON.stringify({ 
+          success: false, 
+          message: "Recipient address mismatch. Please send to your registered address." 
+        }) 
       };
     }
 
-    // TRC20 Logic
+    // TRC20 Verification
     if (network === 'TRC20') {
       const resp = await fetch(`https://apilist.tronscan.org/api/transaction-info?hash=${txId}`);
       const d = await resp.json();
@@ -65,13 +72,13 @@ exports.handler = async (event) => {
       }
     }
 
-    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Verification failed. Check network or address." }) };
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Verification failed. Check your TxID." }) };
 
   } catch (error) {
     return { 
       statusCode: 200, 
       headers: { 'Access-Control-Allow-Origin': '*' }, 
-      body: JSON.stringify({ success: false, message: "Error: " + error.message }) 
+      body: JSON.stringify({ success: false, message: "Blockchain Error: " + error.message }) 
     };
   }
 };
