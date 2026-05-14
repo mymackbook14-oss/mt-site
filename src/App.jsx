@@ -127,6 +127,7 @@ const RegisterScreen = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+ // 👇 YAHAN SE COPY KAREIN 👇
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -148,16 +149,20 @@ const RegisterScreen = () => {
       }]);
 
       if (dbError) {
-        setError('Account already exists or invalid data.');
+        // 🟢 ASLI ERROR YAHAN DIKHEGA
+        console.log("Asli Supabase Error yahan hai:", dbError); 
+        setError('Database Error. Right click karke Inspect -> Console check karein.');
       } else {
         setSuccess('Registration successful!');
         setTimeout(() => navigate('/login'), 1500);
       }
     } catch (err) {
+      console.log("System Catch Error:", err);
       setError('System Error!');
     }
     setLoading(false);
   };
+  // 👆 YAHAN TAK COPY KAREIN 👆
 
   return (
     <AuthLayout>
