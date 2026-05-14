@@ -4,22 +4,24 @@ exports.handler = async (event) => {
   try {
     const { amount, currency, email } = JSON.parse(event.body);
     
-    // 👇 1. YAHAN APNI ASLI PLISIO SECRET KEY DAALEIN (Jo 'OA...' se shuru hoti hai) 👇
+    // 👇 1. YAHAN APNI ASLI PLISIO SECRET KEY DAALEIN 👇
     const SECRET_KEY = "OA0rizBXKkVp3cDS0mIdBMYcwp3rF6Ac_eZPmEgiEctGICaUAGp6avI5ZJYtfAa4";
 
     // 👇 2. YAHAN APNI NETLIFY WEBSITE KA ASLI URL DAALEIN 👇
     const SITE_URL = "https://funny-mandazi-a3e30d.netlify.app"; 
     
-    // Webhook URL aur Order Number ko 'encode' karna zaroori hai taaki '@' sign issue na kare
     const callbackUrl = encodeURIComponent(`${SITE_URL}/.netlify/functions/plisioWebhook`);
     const orderNumber = encodeURIComponent(`USER_${email}_${Date.now()}`);
+    
+    // 🟢 YAHAN HUMNE ORDER NAME ADD KAR DIYA HAI
+    const orderName = encodeURIComponent("Account Recharge"); 
 
-    const apiUrl = `https://api.plisio.net/api/v1/invoices/new?source_currency=USD&source_amount=${amount}&order_number=${orderNumber}&currency=${currency}&callback_url=${callbackUrl}&api_key=${SECRET_KEY}`;
+    // URL mein ab order_name bhi jayega
+    const apiUrl = `https://api.plisio.net/api/v1/invoices/new?source_currency=USD&source_amount=${amount}&order_number=${orderNumber}&order_name=${orderName}&currency=${currency}&callback_url=${callbackUrl}&api_key=${SECRET_KEY}`;
 
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    // Agar Plisio ne invoice bana diya
     if (data && data.status === 'success') {
       return { 
         statusCode: 200, 
@@ -27,8 +29,8 @@ exports.handler = async (event) => {
         body: JSON.stringify({ success: true, checkoutUrl: data.data.invoice_url }) 
       };
     } else {
-      // 🟢 ASLI ERROR YAHAN SE SCREEN PAR DIKHEGA
-      const errorMessage = data?.data?.message || "Plisio ne invoice reject kar diya. Key check karein.";
+      // Agar ab koi error aaya toh Plisio wahi dikhayega
+      const errorMessage = data?.data?.message || JSON.stringify(data.data) || "Plisio error";
       return { 
         statusCode: 400, 
         headers: { 'Access-Control-Allow-Origin': '*' }, 
