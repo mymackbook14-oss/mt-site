@@ -1,36 +1,29 @@
 // netlify/functions/createInvoice.js
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' }, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' };
 
   try {
-    const { amount, currency } = JSON.parse(event.body);
+    const { amount, currency, email } = JSON.parse(event.body);
     
-    // 👇 YAHAN APNI PLISIO KI SECRET KEY PASTE KAREIN 👇
+    // 👇 APNI PLISIO SECRET KEY DAALEIN 👇
     const SECRET_KEY = "OA0rizBXKkVp3cDS0mIdBMYcwp3rF6Ac_eZPmEgiEctGICaUAGp6avI5ZJYtfAa4";
 
-    // Random Order ID generate karna
-    const orderNumber = "ORDER_" + Math.floor(Math.random() * 100000000);
+    // Order number mein user ki email chhupa rahe hain taaki webhook pehchan sake
+    const orderNumber = `USER_${email}_${Date.now()}`;
+    
+    // 👇 APNI LIVE WEBSITE KA NAAM DAALEIN (jaise: https://my-site.netlify.app) 👇
+    const SITE_URL = "https://YOUR_WEBSITE_NAME.netlify.app"; 
+    const callbackUrl = `${SITE_URL}/.netlify/functions/plisioWebhook`;
 
-    // Plisio ka API URL call karna
-    const apiUrl = `https://api.plisio.net/api/v1/invoices/new?source_currency=USD&source_amount=${amount}&order_number=${orderNumber}&currency=${currency}&order_name=Wallet_Recharge&api_key=${SECRET_KEY}`;
+    const apiUrl = `https://api.plisio.net/api/v1/invoices/new?source_currency=USD&source_amount=${amount}&order_number=${orderNumber}&currency=${currency}&callback_url=${callbackUrl}&api_key=${SECRET_KEY}`;
 
     const response = await fetch(apiUrl);
     const data = await response.json();
 
     if (data && data.status === 'success') {
-      return {
-        statusCode: 200,
-        headers: { 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify({ success: true, checkoutUrl: data.data.invoice_url })
-      };
+      return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: true, checkoutUrl: data.data.invoice_url }) };
     } else {
-      return {
-        statusCode: 400,
-        headers: { 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify({ success: false, message: "Failed to create invoice." })
-      };
+      return { statusCode: 400, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: "Failed to create invoice." }) };
     }
   } catch (error) {
     return { statusCode: 500, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ success: false, message: error.message }) };
