@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Apne Supabase Dashboard (Settings > API) se URL aur ANON KEY yahan daalein
-const supabaseUrl = 'YOUR_SUPABASE_URL';
-const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabaseUrl = 'https://irxdvwjrvrwiolwlwtvr.supabase.co'; 
+const supabaseKey = 'sb_publishable_QyW2w4a8pnY5aSg_pHheiA_FAu6Rgq7';
+
+// 👇 Ye line humein sacchayi bata degi 👇
+console.log("Mera Supabase URL ye hai:", supabaseUrl); 
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
