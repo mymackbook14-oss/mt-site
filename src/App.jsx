@@ -480,12 +480,14 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
 
   // 🟢 Real-time Supabase Fetch on Load
+// 🟢 Real-time Supabase Fetch on Load
   useEffect(() => {
     const fetchCloudData = async () => {
       const email = localStorage.getItem('userEmail');
       if (!email) return navigate('/login');
       
-      const { data } = await supabase.from('users').select('*').eq('email', email).single();
+      const { data, error } = await supabase.from('users').select('*').eq('email', email).single();
+      
       if (data) {
         setUser({
           email: data.email,
@@ -498,10 +500,14 @@ const DashboardLayout = () => {
           teamSize: data.team_size || 0,
           teamRecharge: data.team_recharge || 0
         });
+      } else {
+        // AGAR USER NAHI MILA TOH ATKANA NAHI HAI, LOGIN PAR BHEJ DO
+        localStorage.removeItem('userEmail');
+        navigate('/login');
       }
     };
     fetchCloudData();
-  }, [navigate, showRecharge]); // Recharge modal close hone par bhi data refresh hoga
+  }, [navigate, showRecharge]);
 
   // 🟢 Push updates to Supabase
   const syncUserToCloud = async (updatedUser) => {
