@@ -8,7 +8,7 @@ exports.handler = async (event) => {
     const SECRET_KEY = "OA0rizBXKkVp3cDS0mIdBMYcwp3rF6Ac_eZPmEgiEctGICaUAGp6avI5ZJYtfAa4";
 
     // 👇 2. YAHAN APNI NETLIFY WEBSITE KA ASLI URL DAALEIN 👇
-    const SITE_URL = "https://funny-mandazi-a3e30d.netlify.app"; 
+    const SITE_URL = "https://mysite292.netlify.app"; 
     
     const callbackUrl = encodeURIComponent(`${SITE_URL}/.netlify/functions/plisioWebhook`);
     const orderNumber = encodeURIComponent(`USER_${email}_${Date.now()}`);
