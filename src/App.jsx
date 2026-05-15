@@ -5,18 +5,16 @@ import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, Ke
 import { supabase } from './supabaseClient';
 
 // ==========================================
-// 1. BUSINESS CONFIGURATION & CURRENCIES
+// 1. BUSINESS CONFIGURATION & CURRENCIES (🟢 UPDATED VIP LEVELS)
 // ==========================================
 const VIP_TIERS = {
   0: { name: "Non-VIP", cost: 0, daily: 0, minWithdraw: 50 },
-  1: { name: "VIP 1", cost: 15, daily: 6, minWithdraw: 10 },
-  2: { name: "VIP 2", cost: 45, daily: 15, minWithdraw: 20 },
-  3: { name: "VIP 3", cost: 120, daily: 45, minWithdraw: 50 },
-  4: { name: "VIP 4", cost: 350, daily: 120, minWithdraw: 100 },
-  5: { name: "VIP 5", cost: 800, daily: 300, minWithdraw: 200 },
-  6: { name: "VIP 6", cost: 1500, daily: 650, minWithdraw: 500 },
-  7: { name: "VIP 7", cost: 3000, daily: 1400, minWithdraw: 1000 },
-  8: { name: "VIP 8", cost: 6000, daily: 3000, minWithdraw: 2000 }
+  1: { name: "VIP 1", cost: 25, daily: 5, minWithdraw: 130 },
+  2: { name: "VIP 2", cost: 35, daily: 7, minWithdraw: 150 },
+  3: { name: "VIP 3", cost: 50, daily: 10, minWithdraw: 250 },
+  4: { name: "VIP 4", cost: 75, daily: 15, minWithdraw: 380 },
+  5: { name: "VIP 5", cost: 100, daily: 20, minWithdraw: 550 },
+  6: { name: "VIP 6", cost: 150, daily: 30, minWithdraw: 800 }
 };
 
 const WITHDRAW_COINS = [
@@ -32,9 +30,7 @@ const WITHDRAW_COINS = [
   { id: 10, coin: "MATIC", network: "Polygon" },
   { id: 11, coin: "LTC", network: "Litecoin" },
   { id: 12, coin: "DOGE", network: "Dogecoin" },
-  { id: 13, coin: "XRP", network: "Ripple" },
-  { id: 14, coin: "ADA", network: "Cardano" },
-  { id: 15, coin: "DOT", network: "Polkadot" }
+  { id: 13, coin: "XRP", network: "Ripple" }
 ];
 
 const getHighestVip = (user) => {
@@ -47,7 +43,7 @@ const getHighestVip = (user) => {
 // 2. CUSTOM COMPONENTS (POPUPS & UI)
 // ==========================================
 const CustomPopup = ({ message, type, onClose }) => (
-  <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed bottom-10 left-0 right-0 z-[100] flex justify-center px-6 pointer-events-none">
+  <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed bottom-20 left-0 right-0 z-[100] flex justify-center px-6 pointer-events-none">
     <div className={`pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border ${type === 'success' ? 'bg-teal-500/90 border-teal-400 text-[#0B132B]' : 'bg-red-500/90 border-red-400 text-white'}`}>
       {type === 'success' ? <CheckCircle2 size={24}/> : <AlertCircle size={24}/>}
       <p className="font-bold text-sm">{message}</p>
@@ -196,7 +192,7 @@ const RegisterScreen = () => {
 };
 
 // ==========================================
-// 4. MODALS (RECHARGE & WITHDRAWAL)
+// 4. MODALS (RECHARGE, WITHDRAWAL & HISTORY)
 // ==========================================
 const RechargeModal = ({ onClose, userEmail }) => {
   const [amount, setAmount] = useState('');
@@ -257,7 +253,7 @@ const RechargeModal = ({ onClose, userEmail }) => {
   );
 };
 
-const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
+const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
   const [secPassword, setSecPassword] = useState('');
@@ -268,10 +264,15 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
   const totalBalance = (user?.balance || 0) + (user?.refer_balance || 0);
 
   const handleWithdrawRequest = () => {
-    if(!amount || parseFloat(amount) < vipConfig.minWithdraw) return alert(`Min withdrawal for VIP is $${vipConfig.minWithdraw}`);
-    if(parseFloat(amount) > totalBalance) return alert("Insufficient Balance!");
-    if(secPassword !== user.secPassword) return alert("Incorrect Fund Password!");
-    if(!address) return alert("Please enter wallet address!");
+    // 🟢 HIDDEN LOGIC: User must own at least VIP 1
+    if(highestVip === 0) {
+      return showPopup("You must purchase at least one VIP level before you can withdraw funds.", "error");
+    }
+
+    if(!amount || parseFloat(amount) < vipConfig.minWithdraw) return showPopup(`Min withdrawal for ${vipConfig.name} is $${vipConfig.minWithdraw}`, "error");
+    if(parseFloat(amount) > totalBalance) return showPopup("Insufficient Balance!", "error");
+    if(secPassword !== user.secPassword) return showPopup("Incorrect Fund Password!", "error");
+    if(!address) return showPopup("Please enter wallet address!", "error");
     
     onWithdraw(parseFloat(amount), address, selectedCoin.coin, selectedCoin.network);
   };
@@ -285,16 +286,24 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
           <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Total Available</p>
           <p className="text-4xl font-black text-white">${totalBalance.toFixed(2)} <span className="text-sm text-teal-400 font-normal">USDT</span></p>
           <div className="mt-4 flex items-center gap-2 text-yellow-500 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20">
-             <AlertCircle size={14}/> <span className="text-[10px] font-bold">Min: ${vipConfig.minWithdraw} USDT ({vipConfig.name})</span>
+             <AlertCircle size={14}/> <span className="text-[10px] font-bold">Min Limit: ${vipConfig.minWithdraw} USDT ({vipConfig.name})</span>
           </div>
+        </div>
+
+        {/* 🟢 NEW YELLOW WARNING BOX */}
+        <div className="bg-yellow-500/10 border border-yellow-500/30 p-3.5 rounded-xl flex gap-3 items-start shadow-inner">
+           <AlertCircle size={20} className="text-yellow-500 shrink-0 mt-0.5"/>
+           <p className="text-xs text-yellow-500/90 leading-relaxed font-medium">
+             <strong>Warning:</strong> Please enter your withdrawal address correctly. Funds sent to a wrong address in crypto cannot be recovered.
+           </p>
         </div>
 
         <div className="space-y-4">
           <div>
             <p className="text-slate-400 text-xs mb-2 uppercase font-bold">1. Select Coin & Network</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
                {WITHDRAW_COINS.map(item => (
-                 <button key={item.id} onClick={() => setSelectedCoin(item)} className={`p-3 rounded-2xl border flex flex-col items-start transition-all ${selectedCoin.id === item.id ? 'bg-teal-500/20 border-teal-400' : 'bg-[#111A3A] border-white/5'}`}>
+                 <button key={item.id} onClick={() => setSelectedCoin(item)} className={`p-3 rounded-2xl border flex flex-col items-start transition-all ${selectedCoin.id === item.id ? 'bg-teal-500/20 border-teal-400 shadow-lg' : 'bg-[#111A3A] border-white/5 hover:border-white/10'}`}>
                     <span className={`text-xs font-black ${selectedCoin.id === item.id ? 'text-teal-400' : 'text-white'}`}>{item.coin}</span>
                     <span className="text-[9px] text-slate-500 font-mono mt-0.5">{item.network}</span>
                  </button>
@@ -306,11 +315,11 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
             <p className="text-slate-400 text-xs uppercase font-bold">2. Payment Details</p>
             <div className="relative">
                <Wallet className="absolute left-4 top-4 text-slate-500" size={18}/>
-               <input type="text" placeholder={`${selectedCoin.coin} (${selectedCoin.network}) Address`} value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none" />
+               <input type="text" placeholder={`${selectedCoin.coin} (${selectedCoin.network}) Address`} value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none transition-all" />
             </div>
             <div className="relative">
                <span className="absolute left-4 top-4 text-slate-500 font-bold">$</span>
-               <input type="number" placeholder="Amount to Withdraw" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none" />
+               <input type="number" placeholder="Amount to Withdraw" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none transition-all" />
             </div>
             <AuthInput icon={KeyRound} type="password" placeholder="Fund Password" value={secPassword} onChange={(e) => setSecPassword(e.target.value)} />
             
@@ -326,6 +335,36 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
     </motion.div>
   );
 };
+
+// 🟢 NEW HISTORY MODAL
+const HistoryModal = ({ user, onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#0B132B]/90 backdrop-blur-md p-4">
+    <motion.div initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: '100%', opacity: 0 }} className="bg-[#111A3A] w-full max-w-md rounded-[35px] border border-white/10 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+      <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#0B132B] sticky top-0 z-10">
+        <h3 className="font-black text-white flex items-center gap-2 uppercase tracking-widest text-sm"><History size={18} className="text-teal-400"/> Transaction Logs</h3>
+        <button onClick={onClose} className="text-slate-400 hover:text-white bg-white/5 p-2 rounded-full"><ArrowDownRight size={16}/></button>
+      </div>
+      <div className="p-6 overflow-y-auto space-y-3 custom-scrollbar">
+        {user?.tx_history && user.tx_history.length > 0 ? [...user.tx_history].reverse().map((tx, idx) => (
+          <div key={idx} className="flex justify-between items-center bg-[#0B132B] p-4 rounded-2xl border border-white/5">
+            <div>
+               <p className="text-sm font-black text-white">{tx.type}</p>
+               <p className="text-[10px] text-slate-500 mt-1 font-bold">
+                 {new Date(tx.date).toLocaleString()} 
+                 {tx.status && (
+                   <span className={`ml-3 px-2 py-0.5 rounded-full font-black text-[9px] uppercase ${tx.status === 'Done' ? 'bg-teal-500/20 text-teal-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
+                     {tx.status === 'Done' ? 'Success' : tx.status}
+                   </span>
+                 )}
+               </p>
+            </div>
+            <span className={`font-black text-sm ${tx.amount > 0 ? 'text-teal-400' : 'text-red-400'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} <span className="text-[10px] font-normal">USDT</span></span>
+          </div>
+        )) : <div className="text-center text-slate-500 py-10 bg-[#0B132B] rounded-2xl border border-dashed border-white/5">No transaction logs found.</div>}
+      </div>
+    </motion.div>
+  </div>
+);
 
 // ==========================================
 // 5. DASHBOARD TABS
@@ -347,6 +386,7 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
           </div>
         ))}
       </div>
+      <LiveMemberActivity />
       <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Globe size={20} className="text-teal-400"/> Investment Hall</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         {Object.entries(VIP_TIERS).map(([level, data]) => level > 0 && (
@@ -498,27 +538,12 @@ const ProfileTab = ({ user, onAction, onLogout }) => (
       </div>
     </div>
 
-    <div className="bg-[#111A3A] p-6 rounded-[35px] mb-6 border border-white/5 shadow-2xl">
-      <h3 className="font-black text-white flex items-center gap-2 mb-6 uppercase tracking-widest text-sm"><History size={18} className="text-teal-400"/> Transactions</h3>
-      <div className="space-y-3">
-        {user?.tx_history && user.tx_history.length > 0 ? [...user.tx_history].reverse().slice(0, 15).map((tx, idx) => (
-          <div key={idx} className="flex justify-between items-center bg-[#0B132B] p-4 rounded-2xl border border-white/5">
-            <div>
-               <p className="text-sm font-black text-white">{tx.type}</p>
-               <p className="text-[10px] text-slate-500 mt-1 font-bold">
-                 {new Date(tx.date).toLocaleString()} 
-                 {/* 🟢 PROFESSIONAL STATUS BADGES */}
-                 {tx.status && (
-                   <span className={`ml-3 px-2 py-0.5 rounded-full font-black text-[9px] uppercase ${tx.status === 'Done' ? 'bg-teal-500/20 text-teal-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
-                     {tx.status === 'Done' ? 'Success' : tx.status}
-                   </span>
-                 )}
-               </p>
-            </div>
-            <span className={`font-black text-sm ${tx.amount > 0 ? 'text-teal-400' : 'text-red-400'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} <span className="text-[10px] font-normal">USDT</span></span>
-          </div>
-        )) : <div className="text-center text-slate-500 py-10">No transaction logs.</div>}
-      </div>
+    {/* 🟢 NEW HISTORY BUTTON */}
+    <div className="mb-6">
+      <button onClick={() => onAction('History')} className="w-full bg-[#111A3A] p-5 rounded-2xl border border-white/5 flex justify-between items-center hover:bg-white/5 transition-all shadow-lg group">
+        <div className="flex items-center gap-4 font-black text-white text-sm tracking-wider uppercase"><History size={20} className="text-teal-400"/> Transaction History</div>
+        <ChevronRight size={18} className="text-slate-500 group-hover:text-teal-400 transition-all"/>
+      </button>
     </div>
 
     <div onClick={onLogout} className="bg-red-500/10 p-5 rounded-2xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/20 hover:bg-red-500/20 transition-all group">
@@ -539,8 +564,9 @@ const DashboardLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdrawal, setShowWithdrawal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false); // 🟢 State for History Modal
   const [user, setUser] = useState(null);
-  const [popup, setPopup] = useState(null); // 🟢 Custom Popup State
+  const [popup, setPopup] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -564,7 +590,7 @@ const DashboardLayout = () => {
   const syncUserToCloud = async (updatedUser) => {
     setUser(updatedUser); 
     await supabase.from('users').update({
-      balance: updatedUser.balance, owned_vips: updatedUser.ownedVips, tx_history: updatedUser.tx_history
+      balance: updatedUser.balance, refer_balance: updatedUser.refer_balance, owned_vips: updatedUser.ownedVips, tx_history: updatedUser.tx_history
     }).eq('email', updatedUser.email);
   };
 
@@ -577,14 +603,12 @@ const DashboardLayout = () => {
     const owned = user.ownedVips || {};
     if (owned[level] && owned[level].expiry > Date.now()) return showPopup(`VIP ${level} is already active!`, 'error');
     
-    // 🟢 Merged Balance Logic
     const totalBalance = user.balance + user.refer_balance;
     if (totalBalance < cost) return setShowRecharge(true);
     
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const historyEntry = { type: `Unlocked VIP ${level}`, amount: -cost, date: new Date().toISOString() };
     
-    // Deduct from Main Balance first, then referral
     let newBalance = user.balance;
     let newReferBalance = user.refer_balance;
     if (newBalance >= cost) newBalance -= cost;
@@ -604,16 +628,10 @@ const DashboardLayout = () => {
   };
 
   const handleWithdrawal = async (amt, address, coin, network) => {
-    // 🟢 Detailed History Logging
     const historyEntry = { 
-      type: `Withdrawal (${coin}-${network})`, 
-      amount: -amt, 
-      date: new Date().toISOString(),
-      status: "Pending (24h)",
-      address: address
+      type: `Withdrawal (${coin}-${network})`, amount: -amt, date: new Date().toISOString(), status: "Pending (24h)", address: address
     };
     
-    // Deduct from balance logic
     let newBalance = user.balance;
     let newReferBalance = user.refer_balance;
     if (newBalance >= amt) newBalance -= amt;
@@ -622,11 +640,18 @@ const DashboardLayout = () => {
     const updated = { ...user, balance: newBalance, refer_balance: newReferBalance, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
     setShowWithdrawal(false);
-    showPopup(`Withdrawal successful in 24 Hours to ${address.substring(0,6)}...`);
+    showPopup(`Withdrawal processing in 24 Hours to ${address.substring(0,6)}...`);
   };
 
   const handleLogout = () => { localStorage.removeItem('userEmail'); navigate('/login'); };
-  const handleAction = (type) => { type === 'Withdraw' ? setShowWithdrawal(true) : type === 'Recharge' ? setShowRecharge(true) : setActiveTab('team'); };
+  
+  // 🟢 ROUTING ACTION HANDLER
+  const handleAction = (type) => { 
+    if(type === 'Withdraw') setShowWithdrawal(true);
+    else if(type === 'Recharge') setShowRecharge(true);
+    else if(type === 'History') setShowHistoryModal(true); // Open History Modal
+    else setActiveTab('team'); 
+  };
 
   if (!user) return <div className="min-h-screen bg-[#0B132B] flex items-center justify-center text-teal-400"><Loader2 className="animate-spin" size={40} /></div>;
 
@@ -635,7 +660,8 @@ const DashboardLayout = () => {
       <AnimatePresence>
         {popup && <CustomPopup message={popup.message} type={popup.type} onClose={() => setPopup(null)} />}
         {showRecharge && <RechargeModal onClose={() => setShowRecharge(false)} userEmail={user.email} />}
-        {showWithdrawal && <WithdrawalScreen user={user} onClose={() => setShowWithdrawal(false)} onWithdraw={handleWithdrawal} />}
+        {showWithdrawal && <WithdrawalScreen user={user} onClose={() => setShowWithdrawal(false)} onWithdraw={handleWithdrawal} showPopup={showPopup} />}
+        {showHistoryModal && <HistoryModal user={user} onClose={() => setShowHistoryModal(false)} />}
       </AnimatePresence>
 
       <div className="flex flex-col min-h-screen bg-black text-slate-200 selection:bg-teal-500/30">
