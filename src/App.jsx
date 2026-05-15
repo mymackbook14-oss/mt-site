@@ -45,9 +45,9 @@ const getHighestVip = (user) => {
 const CustomPopup = ({ message, type, onClose }) => (
   <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed bottom-20 left-0 right-0 z-[100] flex justify-center px-6 pointer-events-none">
     <div className={`pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border ${type === 'success' ? 'bg-teal-500/90 border-teal-400 text-[#0B132B]' : 'bg-red-500/90 border-red-400 text-white'}`}>
-      {type === 'success' ? <CheckCircle2 size={24}/> : <AlertCircle size={24}/>}
+      {type === 'success' ? <CheckCircle2 size={24} className="shrink-0"/> : <AlertCircle size={24} className="shrink-0"/>}
       <p className="font-bold text-sm">{message}</p>
-      <button onClick={onClose} className="ml-4 opacity-50 hover:opacity-100">✕</button>
+      <button onClick={onClose} className="ml-4 opacity-50 hover:opacity-100 shrink-0">✕</button>
     </div>
   </motion.div>
 );
@@ -163,7 +163,7 @@ const RegisterScreen = () => {
       const { error: dbError } = await supabase.from('users').insert([{
         email: formData.email, password: formData.password, sec_password: formData.secPassword,
         referral_code: refCode, referred_by: formData.inviteCode || null, level2_referred_by: level2Code,
-        balance: 0, refer_balance: 0, total_recharge: 0, team_size: 0, owned_vips: {}, my_referrals: [], tx_history: []
+        balance: 0, earning_balance: 0, refer_balance: 0, total_recharge: 0, team_size: 0, owned_vips: {}, my_referrals: [], tx_history: []
       }]);
 
       if (dbError) setError('Database Error. Email might already exist.');
@@ -261,16 +261,14 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
   
   const highestVip = getHighestVip(user);
   const vipConfig = VIP_TIERS[highestVip] || VIP_TIERS[0];
-  const totalBalance = (user?.balance || 0) + (user?.refer_balance || 0);
+  
+  // 🟢 ONLY EARNING & REFERRAL CAN BE WITHDRAWN
+  const withdrawableBalance = (user?.earning_balance || 0) + (user?.refer_balance || 0);
 
   const handleWithdrawRequest = () => {
-    // 🟢 HIDDEN LOGIC: User must own at least VIP 1
-    if(highestVip === 0) {
-      return showPopup("You must purchase at least one VIP level before you can withdraw funds.", "error");
-    }
-
+    if(highestVip === 0) return showPopup("You must purchase at least one VIP level before you can withdraw funds.", "error");
     if(!amount || parseFloat(amount) < vipConfig.minWithdraw) return showPopup(`Min withdrawal for ${vipConfig.name} is $${vipConfig.minWithdraw}`, "error");
-    if(parseFloat(amount) > totalBalance) return showPopup("Insufficient Balance!", "error");
+    if(parseFloat(amount) > withdrawableBalance) return showPopup("Insufficient Withdrawable Balance!", "error");
     if(secPassword !== user.secPassword) return showPopup("Incorrect Fund Password!", "error");
     if(!address) return showPopup("Please enter wallet address!", "error");
     
@@ -283,18 +281,17 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
       
       <div className="p-6 max-w-3xl mx-auto space-y-6">
         <div className="bg-gradient-to-br from-[#1A264F] to-[#111A3A] p-6 rounded-3xl border border-white/5 shadow-2xl">
-          <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Total Available</p>
-          <p className="text-4xl font-black text-white">${totalBalance.toFixed(2)} <span className="text-sm text-teal-400 font-normal">USDT</span></p>
+          <p className="text-slate-400 text-xs uppercase tracking-widest mb-1 flex items-center gap-2"><Lock size={12}/> Withdrawable Balance</p>
+          <p className="text-4xl font-black text-white">${withdrawableBalance.toFixed(2)} <span className="text-sm text-teal-400 font-normal">USDT</span></p>
           <div className="mt-4 flex items-center gap-2 text-yellow-500 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20">
              <AlertCircle size={14}/> <span className="text-[10px] font-bold">Min Limit: ${vipConfig.minWithdraw} USDT ({vipConfig.name})</span>
           </div>
         </div>
 
-        {/* 🟢 NEW YELLOW WARNING BOX */}
         <div className="bg-yellow-500/10 border border-yellow-500/30 p-3.5 rounded-xl flex gap-3 items-start shadow-inner">
            <AlertCircle size={20} className="text-yellow-500 shrink-0 mt-0.5"/>
            <p className="text-xs text-yellow-500/90 leading-relaxed font-medium">
-             <strong>Warning:</strong> Please enter your withdrawal address correctly. Funds sent to a wrong address in crypto cannot be recovered.
+             <strong>Warning:</strong> Please enter your withdrawal address correctly. Funds sent to a wrong network or address cannot be recovered.
            </p>
         </div>
 
@@ -365,7 +362,6 @@ const HistoryModal = ({ user, onClose }) => (
   </div>
 );
 
-// 🟢 RESTORED LIVE ACTIVITY COMPONENT
 const LiveMemberActivity = () => {
   const [activities, setActivities] = useState([]);
   useEffect(() => {
@@ -397,13 +393,13 @@ const LiveMemberActivity = () => {
 // 5. DASHBOARD TABS
 // ==========================================
 const HomeTab = ({ user, onAction, onUnlockVip }) => {
-  const totalBalance = (user?.balance || 0) + (user?.refer_balance || 0);
+  const totalAssets = (user?.balance || 0) + (user?.earning_balance || 0) + (user?.refer_balance || 0);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
       <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-8 relative overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
         <span className="text-teal-400 font-bold text-sm tracking-widest uppercase mb-2">Total Assets</span>
-        <h2 className="text-4xl font-black text-white leading-tight">${totalBalance.toFixed(2)} <span className="text-sm font-normal text-slate-400">USDT</span></h2>
+        <h2 className="text-4xl font-black text-white leading-tight">${totalAssets.toFixed(2)} <span className="text-sm font-normal text-slate-400">USDT</span></h2>
       </div>
       <div className="grid grid-cols-3 gap-4 mb-10">
         {['Recharge', 'Withdraw', 'Invite'].map((item, i) => (
@@ -549,36 +545,46 @@ const VipTab = ({ user, onUnlockVip }) => (
   </motion.div>
 );
 
-const ProfileTab = ({ user, onAction, onLogout }) => (
-  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
-    <div className="bg-[#111A3A] p-8 rounded-[40px] text-center mb-6 border border-white/5 shadow-2xl relative overflow-hidden">
-      <div className="absolute top-[-20%] left-[-20%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
-      <div className="w-24 h-24 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl shadow-2xl shadow-teal-500/20 border-4 border-white/10">👤</div>
-      <p className="text-xl font-black text-white">{user?.email}</p>
-      <div className="bg-[#0B132B] rounded-3xl p-6 flex justify-between mt-8 border border-white/5 shadow-inner">
-        <div className="w-1/2"><p className="text-[10px] text-slate-500 font-black uppercase mb-1">Main Wallet</p><p className="text-2xl font-black text-white">${parseFloat(user?.balance || 0).toFixed(2)}</p></div>
-        <div className="w-1/2 border-l border-white/5 pl-4"><p className="text-[10px] text-slate-500 font-black uppercase mb-1">Referral Wallet</p><p className="text-2xl font-black text-teal-400">${parseFloat(user?.refer_balance || 0).toFixed(2)}</p></div>
+const ProfileTab = ({ user, onAction, onLogout }) => {
+  const totalAssets = (user?.balance || 0) + (user?.earning_balance || 0) + (user?.refer_balance || 0);
+  
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
+      <div className="bg-[#111A3A] p-8 rounded-[40px] text-center mb-6 border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-[-20%] left-[-20%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
+        <div className="w-24 h-24 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl shadow-2xl shadow-teal-500/20 border-4 border-white/10">👤</div>
+        <p className="text-xl font-black text-white">{user?.email}</p>
+        
+        {/* 🟢 3 WALLETS DISPLAYED PROFESSIONALLY */}
+        <div className="bg-[#0B132B] rounded-3xl p-5 mt-8 border border-white/5 shadow-inner">
+          <p className="text-slate-500 text-[10px] font-black uppercase mb-3">Wallet Balances</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div><p className="text-[9px] text-slate-500 uppercase mb-1 font-bold tracking-widest">Deposit</p><p className="text-lg font-black text-white">${parseFloat(user?.balance || 0).toFixed(1)}</p></div>
+            <div className="border-l border-white/5"><p className="text-[9px] text-slate-500 uppercase mb-1 font-bold tracking-widest">Earning</p><p className="text-lg font-black text-teal-400">${parseFloat(user?.earning_balance || 0).toFixed(1)}</p></div>
+            <div className="border-l border-white/5"><p className="text-[9px] text-slate-500 uppercase mb-1 font-bold tracking-widest">Referral</p><p className="text-lg font-black text-blue-400">${parseFloat(user?.refer_balance || 0).toFixed(1)}</p></div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 mt-6">
+           <button onClick={() => onAction('Recharge')} className="flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-teal-500 text-black font-black py-4 rounded-2xl shadow-xl shadow-teal-500/20 transition-all hover:scale-[1.02]"><Zap size={20}/> Deposit</button>
+           <button onClick={() => onAction('Withdraw')} className="flex items-center justify-center gap-2 bg-white/5 py-4 rounded-2xl border border-white/10 text-white font-black hover:bg-white/10 transition-all"><ArrowLeft size={20}/> Withdraw</button>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 mt-6">
-         <button onClick={() => onAction('Recharge')} className="flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-teal-500 text-black font-black py-4 rounded-2xl shadow-xl shadow-teal-500/20 transition-all hover:scale-[1.02]"><Zap size={20}/> Deposit</button>
-         <button onClick={() => onAction('Withdraw')} className="flex items-center justify-center gap-2 bg-white/5 py-4 rounded-2xl border border-white/10 text-white font-black hover:bg-white/10 transition-all"><ArrowLeft size={20}/> Withdraw</button>
+
+      <div className="mb-6">
+        <button onClick={() => onAction('History')} className="w-full bg-[#111A3A] p-5 rounded-3xl border border-white/5 flex justify-between items-center hover:bg-white/5 transition-all shadow-lg group">
+          <div className="flex items-center gap-4 font-black text-white text-sm tracking-wider uppercase"><History size={20} className="text-teal-400"/> Transaction History</div>
+          <ChevronRight size={18} className="text-slate-500 group-hover:text-teal-400 transition-all"/>
+        </button>
       </div>
-    </div>
 
-    {/* 🟢 NEW HISTORY BUTTON */}
-    <div className="mb-6">
-      <button onClick={() => onAction('History')} className="w-full bg-[#111A3A] p-5 rounded-2xl border border-white/5 flex justify-between items-center hover:bg-white/5 transition-all shadow-lg group">
-        <div className="flex items-center gap-4 font-black text-white text-sm tracking-wider uppercase"><History size={20} className="text-teal-400"/> Transaction History</div>
-        <ChevronRight size={18} className="text-slate-500 group-hover:text-teal-400 transition-all"/>
-      </button>
-    </div>
-
-    <div onClick={onLogout} className="bg-red-500/10 p-5 rounded-2xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/20 hover:bg-red-500/20 transition-all group">
-       <div className="flex items-center gap-3 font-black text-sm uppercase tracking-widest"><LogOut size={20}/> Secure Logout</div>
-       <ChevronRight size={18} className="opacity-30 group-hover:opacity-100 transition-all"/>
-    </div>
-  </motion.div>
-);
+      <div onClick={onLogout} className="bg-red-500/10 p-5 rounded-3xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/20 hover:bg-red-500/20 transition-all group">
+         <div className="flex items-center gap-3 font-black text-sm uppercase tracking-widest"><LogOut size={20}/> Secure Logout</div>
+         <ChevronRight size={18} className="opacity-30 group-hover:opacity-100 transition-all"/>
+      </div>
+    </motion.div>
+  );
+};
 
 // ==========================================
 // 7. MAIN LOGIC & ROUTING
@@ -603,7 +609,7 @@ const DashboardLayout = () => {
       const { data } = await supabase.from('users').select('*').eq('email', email).single();
       if (data) {
         setUser({
-          email: data.email, balance: data.balance || 0, refer_balance: data.refer_balance || 0,
+          email: data.email, balance: data.balance || 0, earning_balance: data.earning_balance || 0, refer_balance: data.refer_balance || 0,
           totalRecharge: data.total_recharge || 0, ownedVips: data.owned_vips || {},
           secPassword: data.sec_password, referralCode: data.referral_code,
           referredBy: data.referred_by, teamSize: data.team_size || 0,
@@ -617,7 +623,7 @@ const DashboardLayout = () => {
   const syncUserToCloud = async (updatedUser) => {
     setUser(updatedUser); 
     await supabase.from('users').update({
-      balance: updatedUser.balance, refer_balance: updatedUser.refer_balance, owned_vips: updatedUser.ownedVips, tx_history: updatedUser.tx_history
+      balance: updatedUser.balance, earning_balance: updatedUser.earning_balance, refer_balance: updatedUser.refer_balance, owned_vips: updatedUser.ownedVips, tx_history: updatedUser.tx_history
     }).eq('email', updatedUser.email);
   };
 
@@ -626,45 +632,41 @@ const DashboardLayout = () => {
     setTimeout(() => setPopup(null), 4000);
   };
 
+  // 🟢 ONLY DEPOSIT WALLET IS USED FOR VIP
   const handleVipUnlock = async (level, cost) => {
     const owned = user.ownedVips || {};
     if (owned[level] && owned[level].expiry > Date.now()) return showPopup(`VIP ${level} is already active!`, 'error');
-    
-    const totalBalance = user.balance + user.refer_balance;
-    if (totalBalance < cost) return setShowRecharge(true);
+    if (user.balance < cost) return showPopup(`Insufficient Deposit Balance. Please recharge $${cost - user.balance} to buy VIP ${level}.`, 'error');
     
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const historyEntry = { type: `Unlocked VIP ${level}`, amount: -cost, date: new Date().toISOString() };
-    
-    let newBalance = user.balance;
-    let newReferBalance = user.refer_balance;
-    if (newBalance >= cost) newBalance -= cost;
-    else { const diff = cost - newBalance; newBalance = 0; newReferBalance -= diff; }
 
-    const updated = { ...user, balance: newBalance, refer_balance: newReferBalance, ownedVips: { ...owned, [level]: { lastClaimTime: null, expiry: Date.now() + thirtyDaysMs } }, tx_history: [...(user.tx_history || []), historyEntry] };
+    const updated = { ...user, balance: user.balance - cost, ownedVips: { ...owned, [level]: { lastClaimTime: null, expiry: Date.now() + thirtyDaysMs } }, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
     showPopup(`You owned VIP Level ${level} Node for 30 Days!`);
   };
 
+  // 🟢 TASKS GO TO EARNING WALLET
   const handleClaim = async (level, amt) => {
     const owned = user.ownedVips || {};
     const historyEntry = { type: `Yield VIP ${level}`, amount: amt, date: new Date().toISOString() };
-    const updated = { ...user, balance: user.balance + amt, ownedVips: { ...owned, [level]: { ...owned[level], lastClaimTime: Date.now() } }, tx_history: [...(user.tx_history || []), historyEntry] };
+    const updated = { ...user, earning_balance: user.earning_balance + amt, ownedVips: { ...owned, [level]: { ...owned[level], lastClaimTime: Date.now() } }, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
     showPopup(`Success! $${amt} USDT Reward Collected.`);
   };
 
+  // 🟢 ONLY EARNING + REFERRAL USED FOR WITHDRAW
   const handleWithdrawal = async (amt, address, coin, network) => {
     const historyEntry = { 
       type: `Withdrawal (${coin}-${network})`, amount: -amt, date: new Date().toISOString(), status: "Pending (24h)", address: address
     };
     
-    let newBalance = user.balance;
-    let newReferBalance = user.refer_balance;
-    if (newBalance >= amt) newBalance -= amt;
-    else { const diff = amt - newBalance; newBalance = 0; newReferBalance -= diff; }
+    let newEarning = user.earning_balance;
+    let newRefer = user.refer_balance;
+    if (newEarning >= amt) newEarning -= amt;
+    else { const diff = amt - newEarning; newEarning = 0; newRefer -= diff; }
 
-    const updated = { ...user, balance: newBalance, refer_balance: newReferBalance, tx_history: [...(user.tx_history || []), historyEntry] };
+    const updated = { ...user, earning_balance: newEarning, refer_balance: newRefer, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
     setShowWithdrawal(false);
     showPopup(`Withdrawal processing in 24 Hours to ${address.substring(0,6)}...`);
