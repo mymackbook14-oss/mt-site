@@ -208,17 +208,34 @@ const RechargeModal = ({ onClose, userEmail }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // 🟢 FIX: Remove loading state if user comes back from Plisio via Back button
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      if (event.persisted) {
+        setIsLoading(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   const handlePayNow = async () => {
-    if (!amount || parseFloat(amount) < 1) return setErrorMsg("Minimum deposit is $1.00");
-    setIsLoading(true); setErrorMsg('');
+    // 🟢 UPDATED: Minimum amount is now $25
+    if (!amount || parseFloat(amount) < 25) return setErrorMsg("Minimum deposit is $25.00");
+    
+    setIsLoading(true); 
+    setErrorMsg('');
     try {
       const response = await fetch('/.netlify/functions/createInvoice', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(amount), currency: 'USDT_TRX', email: userEmail })
+        body: JSON.stringify({ amount: parseFloat(amount), currency: 'USDT_TRX', email: userEmail }) 
       });
       const result = await response.json();
       if (result.success) {
         window.location.href = result.checkoutUrl;
+        
+        // 🟢 FIX: Reset loading state after 3 seconds in case they hit back instantly
+        setTimeout(() => setIsLoading(false), 3000); 
       } else {
         setErrorMsg(result.message || "Could not generate payment link.");
         setIsLoading(false);
@@ -261,7 +278,8 @@ const RechargeModal = ({ onClose, userEmail }) => {
                 className="w-full bg-[#0B132B] border-2 border-white/5 py-4 pl-12 pr-4 rounded-2xl text-white text-3xl font-black focus:border-teal-400 focus:outline-none transition-all shadow-inner" 
               />
             </div>
-            <p className="text-[10px] text-slate-500 text-right mt-2 font-mono">Min. Deposit: $1.00</p>
+            {/* 🟢 UPDATED MINIMUM TEXT TO $25.00 */}
+            <p className="text-[10px] text-slate-500 text-right mt-2 font-mono">Min. Deposit: $25.00</p>
           </div>
           
           {errorMsg && (
@@ -453,7 +471,7 @@ const LiveMemberActivity = () => {
 };
 
 // ==========================================
-// 5. DASHBOARD TABS (🟢 UI UPDATED FOR VIP CARDS)
+// 5. DASHBOARD TABS
 // ==========================================
 const HomeTab = ({ user, onAction, onUnlockVip }) => {
   const totalAssets = (user?.balance || 0) + (user?.earning_balance || 0) + (user?.refer_balance || 0);
@@ -475,8 +493,6 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
       <LiveMemberActivity />
       <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Globe size={20} className="text-teal-400"/> Investment Hall</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-        
-        {/* 🟢 NEW DASHBOARD VIP CARD DETAILS */}
         {Object.entries(VIP_TIERS).map(([level, data]) => level > 0 && (
           <div key={level} onClick={() => onUnlockVip(level, data.cost)} className="bg-[#111A3A]/80 p-5 rounded-3xl border border-white/5 hover:border-teal-500/50 cursor-pointer relative shadow-xl flex flex-col justify-between">
             <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5 relative">
@@ -502,7 +518,6 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
             </div>
           </div>
         ))}
-
       </div>
     </motion.div>
   );
@@ -604,7 +619,6 @@ const TeamTab = ({ user, showPopup }) => {
   );
 };
 
-// 🟢 RENAMED TO VIP TAB & UPDATED VIP LEVEL DETAILS
 const VipTab = ({ user, onUnlockVip }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24 space-y-4">
     {Object.entries(VIP_TIERS).map(([level, d]) => {
@@ -788,11 +802,11 @@ const DashboardLayout = () => {
         </header>
 
         <div className="flex flex-1 max-w-7xl mx-auto w-full">
+          {/* 🟢 SIDEBAR "TASK" UPDATED */}
           <aside className="hidden md:flex flex-col w-64 p-6 border-r border-white/5 space-y-2 pt-8">
             <SideBtn icon={<Home size={20}/>} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-            <SideBtn icon={<List size={20}/>} label="Task Operations" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
+            <SideBtn icon={<List size={20}/>} label="Task" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
             <SideBtn icon={<Users size={20}/>} label="Network Data" active={activeTab === 'team'} onClick={() => setActiveTab('team')} />
-            {/* 🟢 SIDEBAR RENAMED TO VIP */}
             <SideBtn icon={<Gem size={20}/>} label="VIP" active={activeTab === 'vip'} onClick={() => setActiveTab('vip')} />
             <SideBtn icon={<User size={20}/>} label="Account" active={activeTab === 'me'} onClick={() => setActiveTab('me')} />
           </aside>
