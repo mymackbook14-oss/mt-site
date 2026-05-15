@@ -5,7 +5,7 @@ import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, Ke
 import { supabase } from './supabaseClient';
 
 // ==========================================
-// 1. BUSINESS CONFIGURATION & CURRENCIES (🟢 UPDATED VIP LEVELS)
+// 1. BUSINESS CONFIGURATION & CURRENCIES
 // ==========================================
 const VIP_TIERS = {
   0: { name: "Non-VIP", cost: 0, daily: 0, minWithdraw: 50 },
@@ -336,7 +336,6 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
   );
 };
 
-// 🟢 NEW HISTORY MODAL
 const HistoryModal = ({ user, onClose }) => (
   <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#0B132B]/90 backdrop-blur-md p-4">
     <motion.div initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: '100%', opacity: 0 }} className="bg-[#111A3A] w-full max-w-md rounded-[35px] border border-white/10 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
@@ -365,6 +364,34 @@ const HistoryModal = ({ user, onClose }) => (
     </motion.div>
   </div>
 );
+
+// 🟢 RESTORED LIVE ACTIVITY COMPONENT
+const LiveMemberActivity = () => {
+  const [activities, setActivities] = useState([]);
+  useEffect(() => {
+    const names = ['alex', 'whale', 'trade', 'king', 'pro', 'max', 'mike'];
+    let gen = [];
+    for (let i = 0; i < 10; i++) {
+      gen.push({ type: Math.random() > 0.5 ? 'recharge' : 'withdraw', user: `${names[Math.floor(Math.random()*names.length)]}${Math.floor(Math.random()*999)}***`, amount: (Math.random()*250 + 50).toFixed(2) });
+    }
+    setActivities(gen);
+  }, []);
+  return (
+    <div className="mb-10">
+      <div className="flex items-center gap-2 mb-4"><div className="h-3 w-3 rounded-full bg-red-500 animate-ping"></div><h3 className="font-bold">Real-time Activity</h3></div>
+      <div className="h-[180px] overflow-hidden relative rounded-2xl bg-[#111A3A]/60 border border-white/5">
+        <motion.div animate={{ y: ["0%", "-50%"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }} className="p-4 space-y-3">
+          {[...activities, ...activities].map((act, i) => (
+            <div key={i} className="bg-white/[0.03] p-3 rounded-xl flex justify-between items-center border border-white/5">
+              <div className="flex items-center gap-3"><Activity size={14} className={act.type === 'recharge' ? 'text-teal-400' : 'text-blue-400'}/><p className="text-sm font-mono">{act.user}</p></div>
+              <span className={act.type === 'recharge' ? 'text-teal-400' : 'text-white'}>${act.amount}</span>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+    </div>
+  );
+};
 
 // ==========================================
 // 5. DASHBOARD TABS
@@ -564,7 +591,7 @@ const DashboardLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdrawal, setShowWithdrawal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false); // 🟢 State for History Modal
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [user, setUser] = useState(null);
   const [popup, setPopup] = useState(null);
   const navigate = useNavigate();
@@ -645,11 +672,10 @@ const DashboardLayout = () => {
 
   const handleLogout = () => { localStorage.removeItem('userEmail'); navigate('/login'); };
   
-  // 🟢 ROUTING ACTION HANDLER
   const handleAction = (type) => { 
     if(type === 'Withdraw') setShowWithdrawal(true);
     else if(type === 'Recharge') setShowRecharge(true);
-    else if(type === 'History') setShowHistoryModal(true); // Open History Modal
+    else if(type === 'History') setShowHistoryModal(true); 
     else setActiveTab('team'); 
   };
 
