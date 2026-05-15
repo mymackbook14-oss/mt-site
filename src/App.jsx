@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, Copy, Activity, Zap, AlertCircle, CheckCircle2, Loader2, History, Clock, Wallet, ArrowDownRight, Globe } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // ==========================================
-// 1. BUSINESS CONFIGURATION & CURRENCIES
+// 1. BUSINESS CONFIGURATION & CURRENCIES 
 // ==========================================
 const VIP_TIERS = {
   0: { name: "Non-VIP", cost: 0, daily: 0, minWithdraw: 50 },
@@ -64,15 +64,15 @@ const BottomBtn = ({ icon, label, active, onClick }) => (
   </button>
 );
 
-const AuthInput = ({ icon: Icon, type, placeholder, value, onChange, isRequired = true }) => {
+const AuthInput = ({ icon: Icon, type, placeholder, value, onChange, isRequired = true, readOnly = false }) => {
   const [show, setShow] = useState(false);
   return (
     <div className="relative group">
       <Icon className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" size={20} />
       <input 
         type={type === 'password' && !show ? 'password' : (type === 'password' ? 'text' : type)} 
-        placeholder={placeholder} value={value} onChange={onChange} required={isRequired}
-        className="w-full bg-[#111A3A]/50 text-white placeholder-slate-500 px-12 py-3.5 rounded-xl border border-white/10 focus:border-teal-400/50 focus:outline-none transition-all shadow-inner" 
+        placeholder={placeholder} value={value} onChange={onChange} required={isRequired} readOnly={readOnly}
+        className={`w-full bg-[#111A3A]/50 text-white placeholder-slate-500 px-12 py-3.5 rounded-xl border border-white/10 focus:border-teal-400/50 focus:outline-none transition-all shadow-inner ${readOnly ? 'opacity-70 cursor-not-allowed' : ''}`} 
       />
       {type === 'password' && <Eye className={`absolute right-4 top-3.5 cursor-pointer transition-colors ${show ? 'text-teal-400' : 'text-slate-500'}`} size={20} onClick={() => setShow(!show)} />}
     </div>
@@ -138,6 +138,16 @@ const RegisterScreen = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 🟢 AUTO-FILL REFERRAL CODE LOGIC
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const refCodeFromUrl = params.get('ref');
+    if (refCodeFromUrl) {
+      setFormData(prev => ({ ...prev, inviteCode: refCodeFromUrl }));
+    }
+  }, [location]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -181,7 +191,7 @@ const RegisterScreen = () => {
         <AuthInput icon={Mail} type="email" placeholder="Email Address" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
         <AuthInput icon={Lock} type="password" placeholder="Login Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
         <AuthInput icon={KeyRound} type="password" placeholder="Fund Password" value={formData.secPassword} onChange={(e) => setFormData({...formData, secPassword: e.target.value})} />
-        <AuthInput icon={Users} type="text" placeholder="Invite Code (Optional)" value={formData.inviteCode} onChange={(e) => setFormData({...formData, inviteCode: e.target.value})} isRequired={false} />
+        <AuthInput icon={Users} type="text" placeholder="Invite Code (Optional)" value={formData.inviteCode} onChange={(e) => setFormData({...formData, inviteCode: e.target.value})} isRequired={false} readOnly={!!(new URLSearchParams(location.search).get('ref'))} />
         <motion.button whileTap={{ scale: 0.98 }} disabled={loading} type="submit" className="w-full bg-teal-400 text-[#0B132B] font-bold py-4 rounded-xl mt-4">
           {loading ? 'Creating...' : 'Complete'}
         </motion.button>
@@ -262,7 +272,6 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
   const highestVip = getHighestVip(user);
   const vipConfig = VIP_TIERS[highestVip] || VIP_TIERS[0];
   
-  // 🟢 ONLY EARNING & REFERRAL CAN BE WITHDRAWN
   const withdrawableBalance = (user?.earning_balance || 0) + (user?.refer_balance || 0);
 
   const handleWithdrawRequest = () => {
@@ -362,28 +371,66 @@ const HistoryModal = ({ user, onClose }) => (
   </div>
 );
 
+// 🟢 NEW: PROFESSIONAL LIVE MEMBER ACTIVITY (Random 3-8s gap, No Duplicates)
 const LiveMemberActivity = () => {
   const [activities, setActivities] = useState([]);
+
   useEffect(() => {
-    const names = ['alex', 'whale', 'trade', 'king', 'pro', 'max', 'mike'];
-    let gen = [];
-    for (let i = 0; i < 10; i++) {
-      gen.push({ type: Math.random() > 0.5 ? 'recharge' : 'withdraw', user: `${names[Math.floor(Math.random()*names.length)]}${Math.floor(Math.random()*999)}***`, amount: (Math.random()*250 + 50).toFixed(2) });
-    }
-    setActivities(gen);
+    const types = ['recharge', 'withdraw', 'referral'];
+    const names = ['alex', 'jhon', 'mike', 'sara', 'david', 'chris', 'emma', 'luke', 'paul', 'nina', 'ryan', 'olivia'];
+
+    const generateAct = () => {
+      const type = types[Math.floor(Math.random() * types.length)];
+      const user = `${names[Math.floor(Math.random() * names.length)]}***@gmail.com`;
+      let amount = 0;
+      if (type === 'referral') amount = (Math.random() * (5.0 - 1.0) + 1.0).toFixed(2); // $1 to $5
+      else amount = (Math.random() * (250 - 20) + 20).toFixed(2); // $20 to $250
+      return { id: Date.now() + Math.random(), type, user, amount };
+    };
+
+    // Initial 4 activities
+    setActivities(Array.from({ length: 4 }, generateAct));
+
+    const triggerNextActivity = () => {
+      setActivities(prev => {
+        const newAct = generateAct();
+        // Prevent immediate duplicate names
+        if (prev.length > 0 && prev[0].user === newAct.user) newAct.user = `user${Math.floor(Math.random()*999)}***@gmail.com`;
+        return [newAct, ...prev].slice(0, 4);
+      });
+      // Random gap between 3 to 8 seconds
+      const nextGap = Math.floor(Math.random() * (8000 - 3000 + 1) + 3000);
+      setTimeout(triggerNextActivity, nextGap);
+    };
+
+    const timer = setTimeout(triggerNextActivity, 3000);
+    return () => clearTimeout(timer);
   }, []);
+
   return (
     <div className="mb-10">
-      <div className="flex items-center gap-2 mb-4"><div className="h-3 w-3 rounded-full bg-red-500 animate-ping"></div><h3 className="font-bold">Real-time Activity</h3></div>
-      <div className="h-[180px] overflow-hidden relative rounded-2xl bg-[#111A3A]/60 border border-white/5">
-        <motion.div animate={{ y: ["0%", "-50%"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }} className="p-4 space-y-3">
-          {[...activities, ...activities].map((act, i) => (
-            <div key={i} className="bg-white/[0.03] p-3 rounded-xl flex justify-between items-center border border-white/5">
-              <div className="flex items-center gap-3"><Activity size={14} className={act.type === 'recharge' ? 'text-teal-400' : 'text-blue-400'}/><p className="text-sm font-mono">{act.user}</p></div>
-              <span className={act.type === 'recharge' ? 'text-teal-400' : 'text-white'}>${act.amount}</span>
-            </div>
-          ))}
-        </motion.div>
+      <div className="flex items-center gap-2 mb-4"><div className="h-3 w-3 rounded-full bg-teal-400 animate-ping shadow-[0_0_10px_rgba(45,212,191,0.8)]"></div><h3 className="font-bold text-slate-300 tracking-wider text-sm uppercase">Live Activity</h3></div>
+      <div className="h-[210px] overflow-hidden relative rounded-3xl bg-[#111A3A]/40 border border-white/5 shadow-inner p-3">
+        <div className="space-y-2">
+          <AnimatePresence>
+            {activities.map((act) => (
+              <motion.div key={act.id} initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }} className="bg-[#0B132B] p-3.5 rounded-2xl flex justify-between items-center border border-white/5 shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${act.type === 'recharge' ? 'bg-teal-500/10 text-teal-400' : act.type === 'withdraw' ? 'bg-blue-500/10 text-blue-400' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                    {act.type === 'recharge' ? <Zap size={14}/> : act.type === 'withdraw' ? <ArrowLeft size={14}/> : <Users size={14}/>}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-300">{act.user}</p>
+                    <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">{act.type === 'referral' ? 'Referral Bonus' : act.type}</p>
+                  </div>
+                </div>
+                <span className={`font-black text-sm ${act.type === 'withdraw' ? 'text-blue-400' : act.type === 'referral' ? 'text-yellow-500' : 'text-teal-400'}`}>
+                  {act.type === 'withdraw' ? '-' : '+'}${act.amount}
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
@@ -491,7 +538,7 @@ const TaskTab = ({ user, onClaimDaily }) => {
   );
 };
 
-const TeamTab = ({ user }) => {
+const TeamTab = ({ user, showPopup }) => {
   const referralLink = `${window.location.origin}/register?ref=${user?.referralCode || ''}`;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
@@ -504,7 +551,7 @@ const TeamTab = ({ user }) => {
         </p>
         <div className="bg-[#0B132B] p-4 rounded-2xl flex justify-between items-center border border-white/10 shadow-inner">
           <div className="overflow-hidden mr-4"><p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Invite Link</p><p className="text-xs font-bold truncate text-teal-400 font-mono">{referralLink}</p></div>
-          <button onClick={() => { navigator.clipboard.writeText(referralLink); }} className="bg-teal-400 text-black p-3 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg"><Copy size={18}/></button>
+          <button onClick={() => { navigator.clipboard.writeText(referralLink); showPopup("Referral Link Copied Successfully!"); }} className="bg-teal-400 text-black p-3 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg"><Copy size={18}/></button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 mb-8">
@@ -555,7 +602,6 @@ const ProfileTab = ({ user, onAction, onLogout }) => {
         <div className="w-24 h-24 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl shadow-2xl shadow-teal-500/20 border-4 border-white/10">👤</div>
         <p className="text-xl font-black text-white">{user?.email}</p>
         
-        {/* 🟢 3 WALLETS DISPLAYED PROFESSIONALLY */}
         <div className="bg-[#0B132B] rounded-3xl p-5 mt-8 border border-white/5 shadow-inner">
           <p className="text-slate-500 text-[10px] font-black uppercase mb-3">Wallet Balances</p>
           <div className="grid grid-cols-3 gap-2">
@@ -632,7 +678,6 @@ const DashboardLayout = () => {
     setTimeout(() => setPopup(null), 4000);
   };
 
-  // 🟢 ONLY DEPOSIT WALLET IS USED FOR VIP
   const handleVipUnlock = async (level, cost) => {
     const owned = user.ownedVips || {};
     if (owned[level] && owned[level].expiry > Date.now()) return showPopup(`VIP ${level} is already active!`, 'error');
@@ -646,7 +691,6 @@ const DashboardLayout = () => {
     showPopup(`You owned VIP Level ${level} Node for 30 Days!`);
   };
 
-  // 🟢 TASKS GO TO EARNING WALLET
   const handleClaim = async (level, amt) => {
     const owned = user.ownedVips || {};
     const historyEntry = { type: `Yield VIP ${level}`, amount: amt, date: new Date().toISOString() };
@@ -655,7 +699,6 @@ const DashboardLayout = () => {
     showPopup(`Success! $${amt} USDT Reward Collected.`);
   };
 
-  // 🟢 ONLY EARNING + REFERRAL USED FOR WITHDRAW
   const handleWithdrawal = async (amt, address, coin, network) => {
     const historyEntry = { 
       type: `Withdrawal (${coin}-${network})`, amount: -amt, date: new Date().toISOString(), status: "Pending (24h)", address: address
@@ -712,7 +755,7 @@ const DashboardLayout = () => {
           <main className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar">
             {activeTab === 'home' && <HomeTab user={user} onAction={handleAction} onUnlockVip={handleVipUnlock} />}
             {activeTab === 'task' && <TaskTab user={user} onClaimDaily={handleClaim} />}
-            {activeTab === 'team' && <TeamTab user={user} />}
+            {activeTab === 'team' && <TeamTab user={user} showPopup={showPopup} />}
             {activeTab === 'vip' && <VipTab user={user} onUnlockVip={handleVipUnlock} />}
             {activeTab === 'me' && <ProfileTab user={user} onAction={handleAction} onLogout={handleLogout} />}
           </main>
