@@ -9,12 +9,12 @@ import { supabase } from './supabaseClient';
 // ==========================================
 const VIP_TIERS = {
   0: { name: "Non-VIP", cost: 0, daily: 0, minWithdraw: 50 },
-  1: { name: "VIP 1", cost: 25, daily: 5, minWithdraw: 130 },
-  2: { name: "VIP 2", cost: 35, daily: 7, minWithdraw: 150 },
-  3: { name: "VIP 3", cost: 50, daily: 10, minWithdraw: 250 },
-  4: { name: "VIP 4", cost: 75, daily: 15, minWithdraw: 380 },
-  5: { name: "VIP 5", cost: 100, daily: 20, minWithdraw: 550 },
-  6: { name: "VIP 6", cost: 150, daily: 30, minWithdraw: 800 }
+  1: { name: "VIP 1", cost: 25, daily: 5, minWithdraw: 30 },
+  2: { name: "VIP 2", cost: 35, daily: 10, minWithdraw: 60 },
+  3: { name: "VIP 3", cost: 50, daily: 20, minWithdraw: 125 },
+  4: { name: "VIP 4", cost: 75, daily: 35, minWithdraw: 180 },
+  5: { name: "VIP 5", cost: 100, daily: 45, minWithdraw: 230 },
+  6: { name: "VIP 6", cost: 150, daily: 70, minWithdraw: 500 }
 };
 
 const WITHDRAW_COINS = [
