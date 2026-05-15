@@ -140,7 +140,6 @@ const RegisterScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🟢 AUTO-FILL REFERRAL CODE LOGIC
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const refCodeFromUrl = params.get('ref');
@@ -206,59 +205,80 @@ const RegisterScreen = () => {
 // ==========================================
 const RechargeModal = ({ onClose, userEmail }) => {
   const [amount, setAmount] = useState('');
-  const [network, setNetwork] = useState('USDT_TRX'); 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const handlePayNow = async () => {
-    if (!amount || parseFloat(amount) < 1) return setErrorMsg("Minimum deposit is $1");
+    if (!amount || parseFloat(amount) < 1) return setErrorMsg("Minimum deposit is $1.00");
     setIsLoading(true); setErrorMsg('');
     try {
       const response = await fetch('/.netlify/functions/createInvoice', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(amount), currency: network, email: userEmail })
+        body: JSON.stringify({ amount: parseFloat(amount), currency: 'USDT_TRX', email: userEmail })
       });
       const result = await response.json();
-      if (result.success) window.location.href = result.checkoutUrl;
-      else setErrorMsg(result.message || "Could not generate payment link.");
-    } catch (error) { setErrorMsg("System error. Check backend."); } 
-    finally { setIsLoading(false); }
+      if (result.success) {
+        window.location.href = result.checkoutUrl;
+      } else {
+        setErrorMsg(result.message || "Could not generate payment link.");
+        setIsLoading(false);
+      }
+    } catch (error) { 
+      setErrorMsg("System connection error."); 
+      setIsLoading(false);
+    } 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B132B]/90 backdrop-blur-md">
-      <div className="bg-[#111A3A] w-full max-w-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-teal-600 to-teal-400 p-6 text-center text-[#0B132B]">
-          <h3 className="font-bold text-xl mb-1">Add Funds via Plisio</h3>
-          <p className="text-sm font-medium opacity-80">Instant No-KYC Deposit</p>
-        </div>
-        {isLoading ? (
-           <div className="p-12 flex flex-col items-center justify-center space-y-6">
-              <Loader2 size={60} className="text-teal-400 animate-spin" />
-              <h3 className="text-xl font-bold text-white text-center">Generating Invoice...</h3>
-           </div>
-        ) : (
-          <div className="p-8 space-y-5">
-            <div>
-              <p className="text-slate-400 text-sm mb-2">Deposit Amount ($ USD)</p>
-              <input type="number" placeholder="Min $1" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0B132B] border border-white/10 p-4 rounded-xl text-white text-xl focus:border-teal-400 focus:outline-none" />
-            </div>
-            <div>
-              <p className="text-slate-400 text-sm mb-2">Select Crypto</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[{ id: 'USDT_TRX', name: 'USDT (TRC20)' }, { id: 'USDT_BSC', name: 'USDT (BEP20)' }, { id: 'TON', name: 'TON Coin' }].map((coin) => (
-                  <button key={coin.id} onClick={() => setNetwork(coin.id)} className={`py-3 rounded-xl border text-[10px] font-bold transition-all ${network === coin.id ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'border-white/10 text-slate-400 hover:border-white/30'}`}>{coin.name}</button>
-                ))}
-              </div>
-            </div>
-            {errorMsg && <div className="text-red-400 text-xs text-center font-bold bg-red-500/10 p-2 rounded-lg">{errorMsg}</div>}
-            <div className="flex gap-4 mt-6">
-              <button onClick={onClose} className="flex-1 py-3.5 rounded-xl border border-white/10 text-slate-300">Cancel</button>
-              <button onClick={handlePayNow} className="flex-1 py-3.5 rounded-xl bg-teal-400 text-[#0B132B] font-bold">Pay via Plisio</button>
-            </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#0B132B]/95 backdrop-blur-xl">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#111A3A] w-full max-w-sm rounded-[30px] border border-white/10 shadow-2xl overflow-hidden relative">
+        
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-[#0B132B]/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+            <Loader2 size={50} className="text-teal-400 animate-spin mb-4" />
+            <h3 className="text-lg font-black text-white tracking-widest uppercase">Connecting</h3>
+            <p className="text-xs text-teal-400 mt-2 animate-pulse font-mono">Redirecting to secure gateway...</p>
           </div>
         )}
-      </div>
+        
+        <div className="bg-gradient-to-r from-teal-500 to-teal-400 p-6 text-center text-[#0B132B] relative overflow-hidden">
+          <div className="absolute top-[-50%] left-[-10%] w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
+          <h3 className="font-black text-2xl uppercase tracking-tighter relative z-10">Deposit</h3>
+          <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1 relative z-10">Secure Auto-Credit System</p>
+        </div>
+        
+        <div className="p-8 space-y-6">
+          <div>
+            <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-3">Enter Amount</p>
+            <div className="relative">
+              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl text-teal-400 font-black">$</span>
+              <input 
+                type="number" 
+                placeholder="0.00" 
+                value={amount} 
+                onChange={(e) => setAmount(e.target.value)} 
+                className="w-full bg-[#0B132B] border-2 border-white/5 py-4 pl-12 pr-4 rounded-2xl text-white text-3xl font-black focus:border-teal-400 focus:outline-none transition-all shadow-inner" 
+              />
+            </div>
+            <p className="text-[10px] text-slate-500 text-right mt-2 font-mono">Min. Deposit: $1.00</p>
+          </div>
+          
+          {errorMsg && (
+            <div className="flex items-start gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+              <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5"/>
+              <p className="text-red-400 text-xs font-bold">{errorMsg}</p>
+            </div>
+          )}
+          
+          <div className="flex gap-3 mt-8 pt-2">
+            <button onClick={onClose} disabled={isLoading} className="w-1/3 py-4 rounded-2xl border border-white/10 text-slate-400 font-bold hover:bg-white/5 hover:text-white transition-all">Cancel</button>
+            <button onClick={handlePayNow} disabled={isLoading} className="w-2/3 py-4 rounded-2xl bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] font-black text-lg shadow-[0_0_20px_rgba(45,212,191,0.3)] hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-2">
+              Pay <ChevronRight size={20} strokeWidth={3}/>
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };
@@ -371,7 +391,6 @@ const HistoryModal = ({ user, onClose }) => (
   </div>
 );
 
-// 🟢 NEW: PROFESSIONAL LIVE MEMBER ACTIVITY (Random 3-8s gap, No Duplicates)
 const LiveMemberActivity = () => {
   const [activities, setActivities] = useState([]);
 
@@ -383,22 +402,19 @@ const LiveMemberActivity = () => {
       const type = types[Math.floor(Math.random() * types.length)];
       const user = `${names[Math.floor(Math.random() * names.length)]}***@gmail.com`;
       let amount = 0;
-      if (type === 'referral') amount = (Math.random() * (5.0 - 1.0) + 1.0).toFixed(2); // $1 to $5
-      else amount = (Math.random() * (250 - 20) + 20).toFixed(2); // $20 to $250
+      if (type === 'referral') amount = (Math.random() * (5.0 - 1.0) + 1.0).toFixed(2); 
+      else amount = (Math.random() * (250 - 20) + 20).toFixed(2); 
       return { id: Date.now() + Math.random(), type, user, amount };
     };
 
-    // Initial 4 activities
     setActivities(Array.from({ length: 4 }, generateAct));
 
     const triggerNextActivity = () => {
       setActivities(prev => {
         const newAct = generateAct();
-        // Prevent immediate duplicate names
         if (prev.length > 0 && prev[0].user === newAct.user) newAct.user = `user${Math.floor(Math.random()*999)}***@gmail.com`;
         return [newAct, ...prev].slice(0, 4);
       });
-      // Random gap between 3 to 8 seconds
       const nextGap = Math.floor(Math.random() * (8000 - 3000 + 1) + 3000);
       setTimeout(triggerNextActivity, nextGap);
     };
@@ -437,7 +453,7 @@ const LiveMemberActivity = () => {
 };
 
 // ==========================================
-// 5. DASHBOARD TABS
+// 5. DASHBOARD TABS (🟢 UI UPDATED FOR VIP CARDS)
 // ==========================================
 const HomeTab = ({ user, onAction, onUnlockVip }) => {
   const totalAssets = (user?.balance || 0) + (user?.earning_balance || 0) + (user?.refer_balance || 0);
@@ -459,17 +475,34 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
       <LiveMemberActivity />
       <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Globe size={20} className="text-teal-400"/> Investment Hall</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        
+        {/* 🟢 NEW DASHBOARD VIP CARD DETAILS */}
         {Object.entries(VIP_TIERS).map(([level, data]) => level > 0 && (
-          <div key={level} onClick={() => onUnlockVip(level, data.cost)} className="bg-[#111A3A]/80 p-5 rounded-3xl border border-white/5 hover:border-teal-500/50 cursor-pointer relative shadow-xl">
-            <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5">
+          <div key={level} onClick={() => onUnlockVip(level, data.cost)} className="bg-[#111A3A]/80 p-5 rounded-3xl border border-white/5 hover:border-teal-500/50 cursor-pointer relative shadow-xl flex flex-col justify-between">
+            <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5 relative">
               <UsdtIcon />
               <div className="absolute top-3 left-3 bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded font-bold">VIP {level}</div>
               {user?.ownedVips && user.ownedVips[level] && user.ownedVips[level].expiry > Date.now() && <div className="absolute bottom-2 right-2 bg-teal-500 text-white rounded-full p-1"><CheckCircle2 size={12}/></div>}
             </div>
-            <p className="text-[10px] text-slate-500 uppercase mb-1 font-bold">Required Fund</p>
-            <p className="text-lg font-black text-white">${data.cost}.00</p>
+            
+            <div className="flex justify-between items-end mb-3">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase mb-0.5 font-bold">Entry Fee</p>
+                <p className="text-lg font-black text-white">${data.cost}.00</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-500 uppercase mb-0.5 font-bold">Daily Earn</p>
+                <p className="text-sm font-black text-teal-400">+${data.daily}</p>
+              </div>
+            </div>
+            
+            <div className="pt-3 border-t border-white/5 flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-slate-500">
+               <span>Cycle</span>
+               <span className="text-white bg-white/5 px-2 py-1 rounded">30 Days</span>
+            </div>
           </div>
         ))}
+
       </div>
     </motion.div>
   );
@@ -508,7 +541,7 @@ const TaskTab = ({ user, onClaimDaily }) => {
         <div className="bg-[#111A3A]/50 rounded-3xl border border-white/5 p-16 text-center shadow-2xl border-dashed">
           <Activity size={48} className="text-slate-600 mx-auto mb-4" />
           <h3 className="text-2xl font-bold text-white">No Active Nodes</h3>
-          <p className="text-slate-500 text-sm mt-2">Unlock a VIP portfolio to start claiming rewards.</p>
+          <p className="text-slate-500 text-sm mt-2">Unlock a VIP level to start claiming rewards.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -571,6 +604,7 @@ const TeamTab = ({ user, showPopup }) => {
   );
 };
 
+// 🟢 RENAMED TO VIP TAB & UPDATED VIP LEVEL DETAILS
 const VipTab = ({ user, onUnlockVip }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24 space-y-4">
     {Object.entries(VIP_TIERS).map(([level, d]) => {
@@ -579,11 +613,21 @@ const VipTab = ({ user, onUnlockVip }) => (
       const isOwned = vipData && vipData.expiry > Date.now();
       return (
         <div key={level} className={`bg-[#111A3A] rounded-3xl p-6 flex items-center gap-6 border transition-all ${isOwned ? 'border-teal-500 shadow-[0_0_20px_rgba(45,212,191,0.1)]' : 'border-white/5'}`}>
-          <div className="w-20 h-20 bg-[#0B132B] rounded-2xl flex flex-col justify-center items-center shadow-inner"><UsdtIcon sizeClass="w-8 h-8"/><span className="text-yellow-500 text-[10px] mt-1 font-black">Tier {level}</span></div>
+          <div className="w-20 h-20 bg-[#0B132B] rounded-2xl flex flex-col justify-center items-center shadow-inner shrink-0">
+            <UsdtIcon sizeClass="w-8 h-8"/>
+            <span className="text-yellow-500 text-[10px] mt-1 font-black">Tier {level}</span>
+          </div>
           <div className="flex-1">
-            <p className="font-black text-white text-lg">{d.name} Portfolio</p>
-            <p className="text-teal-400 font-black text-xl">${d.daily} <span className="text-xs font-normal text-slate-500">/ Day (30d)</span></p>
-            <p className="text-slate-500 text-[10px] mt-1 uppercase font-bold tracking-widest">Entry: ${d.cost} USDT</p>
+            <p className="font-black text-white text-lg uppercase tracking-wider">VIP Level {level}</p>
+            <div className="flex items-center gap-2 mt-1">
+               <p className="text-teal-400 font-black text-xl">+${d.daily}</p>
+               <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-2 py-1 rounded-md ml-1 uppercase">/ Daily</span>
+            </div>
+            <div className="mt-2 flex items-center gap-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+               <p>Fee: <span className="text-white font-black">${d.cost} USDT</span></p>
+               <span className="w-1 h-1 bg-white/20 rounded-full"></span>
+               <p>30 Days</p>
+            </div>
           </div>
           <button disabled={isOwned} onClick={() => onUnlockVip(level, d.cost)} className={`px-6 py-3 rounded-xl font-black shadow-lg transition-all ${isOwned ? 'bg-teal-500/10 text-teal-500 border border-teal-500/20' : 'bg-gradient-to-r from-teal-400 to-teal-500 text-black hover:scale-105'}`}>{isOwned ? "Active" : "Buy"}</button>
         </div>
@@ -748,7 +792,8 @@ const DashboardLayout = () => {
             <SideBtn icon={<Home size={20}/>} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
             <SideBtn icon={<List size={20}/>} label="Task Operations" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
             <SideBtn icon={<Users size={20}/>} label="Network Data" active={activeTab === 'team'} onClick={() => setActiveTab('team')} />
-            <SideBtn icon={<Gem size={20}/>} label="Portfolios" active={activeTab === 'vip'} onClick={() => setActiveTab('vip')} />
+            {/* 🟢 SIDEBAR RENAMED TO VIP */}
+            <SideBtn icon={<Gem size={20}/>} label="VIP" active={activeTab === 'vip'} onClick={() => setActiveTab('vip')} />
             <SideBtn icon={<User size={20}/>} label="Account" active={activeTab === 'me'} onClick={() => setActiveTab('me')} />
           </aside>
 
