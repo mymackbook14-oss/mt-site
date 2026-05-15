@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, Copy, Activity, Zap, AlertCircle, CheckCircle2, Loader2, History, Clock } from 'lucide-react';
-import { supabase } from './supabaseClient'; // 🟢 Supabase Import
+import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, Copy, Activity, Zap, AlertCircle, CheckCircle2, Loader2, History, Clock, Wallet, ArrowDownRight, Globe } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 // ==========================================
-// 1. BUSINESS CONFIGURATION (VIP Logic)
+// 1. BUSINESS CONFIGURATION & CURRENCIES
 // ==========================================
 const VIP_TIERS = {
   0: { name: "Non-VIP", cost: 0, daily: 0, minWithdraw: 50 },
@@ -19,6 +19,24 @@ const VIP_TIERS = {
   8: { name: "VIP 8", cost: 6000, daily: 3000, minWithdraw: 2000 }
 };
 
+const WITHDRAW_COINS = [
+  { id: 1, coin: "USDT", network: "TRC20" },
+  { id: 2, coin: "USDT", network: "BEP20" },
+  { id: 3, coin: "USDT", network: "ERC20" },
+  { id: 4, coin: "TON", network: "TON Network" },
+  { id: 5, coin: "BTC", network: "Bitcoin" },
+  { id: 6, coin: "ETH", network: "Ethereum" },
+  { id: 7, coin: "BNB", network: "BSC" },
+  { id: 8, coin: "TRX", network: "TRON" },
+  { id: 9, coin: "SOL", network: "Solana" },
+  { id: 10, coin: "MATIC", network: "Polygon" },
+  { id: 11, coin: "LTC", network: "Litecoin" },
+  { id: 12, coin: "DOGE", network: "Dogecoin" },
+  { id: 13, coin: "XRP", network: "Ripple" },
+  { id: 14, coin: "ADA", network: "Cardano" },
+  { id: 15, coin: "DOT", network: "Polkadot" }
+];
+
 const getHighestVip = (user) => {
   if (!user || !user.ownedVips) return user?.vipLevel || 0;
   const vips = Object.keys(user.ownedVips).map(Number);
@@ -26,8 +44,18 @@ const getHighestVip = (user) => {
 };
 
 // ==========================================
-// 2. REUSABLE UI COMPONENTS
+// 2. CUSTOM COMPONENTS (POPUPS & UI)
 // ==========================================
+const CustomPopup = ({ message, type, onClose }) => (
+  <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="fixed bottom-10 left-0 right-0 z-[100] flex justify-center px-6 pointer-events-none">
+    <div className={`pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border ${type === 'success' ? 'bg-teal-500/90 border-teal-400 text-[#0B132B]' : 'bg-red-500/90 border-red-400 text-white'}`}>
+      {type === 'success' ? <CheckCircle2 size={24}/> : <AlertCircle size={24}/>}
+      <p className="font-bold text-sm">{message}</p>
+      <button onClick={onClose} className="ml-4 opacity-50 hover:opacity-100">✕</button>
+    </div>
+  </motion.div>
+);
+
 const SideBtn = ({ icon, label, active, onClick }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl font-medium transition-all duration-300 ${active ? 'bg-gradient-to-r from-teal-500/20 to-transparent border-l-4 border-teal-400 text-white shadow-[inset_0px_0px_20px_rgba(45,212,191,0.05)]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-4 border-transparent'}`}>
     {icon} <span>{label}</span>
@@ -168,7 +196,7 @@ const RegisterScreen = () => {
 };
 
 // ==========================================
-// 4. PLISIO AUTOMATIC DEPOSIT & WITHDRAWAL
+// 4. MODALS (RECHARGE & WITHDRAWAL)
 // ==========================================
 const RechargeModal = ({ onClose, userEmail }) => {
   const [amount, setAmount] = useState('');
@@ -233,33 +261,66 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
   const [secPassword, setSecPassword] = useState('');
+  const [selectedCoin, setSelectedCoin] = useState(WITHDRAW_COINS[0]);
+  
   const highestVip = getHighestVip(user);
   const vipConfig = VIP_TIERS[highestVip] || VIP_TIERS[0];
+  const totalBalance = (user?.balance || 0) + (user?.refer_balance || 0);
 
   const handleWithdrawRequest = () => {
-    if(!amount || parseFloat(amount) < vipConfig.minWithdraw) return alert(`Minimum Withdrawal for your VIP is $${vipConfig.minWithdraw} USDT`);
-    if(parseFloat(amount) > user.balance) return alert("Insufficient Balance!");
+    if(!amount || parseFloat(amount) < vipConfig.minWithdraw) return alert(`Min withdrawal for VIP is $${vipConfig.minWithdraw}`);
+    if(parseFloat(amount) > totalBalance) return alert("Insufficient Balance!");
     if(secPassword !== user.secPassword) return alert("Incorrect Fund Password!");
-    if(!address) return alert("Please enter receiving address!");
+    if(!address) return alert("Please enter wallet address!");
     
-    // 🟢 PASSING BOTH AMOUNT AND ADDRESS FOR HISTORY
-    onWithdraw(parseFloat(amount), address);
+    onWithdraw(parseFloat(amount), address, selectedCoin.coin, selectedCoin.network);
   };
 
   return (
     <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-0 z-50 bg-[#0B132B] text-white overflow-y-auto">
-      <div className="bg-[#111A3A] p-5 flex items-center justify-between border-b border-white/5 sticky top-0"><button onClick={onClose}><ArrowLeft size={20} /></button><h2 className="font-bold">Fund Withdrawal</h2><div className="w-10"></div></div>
-      <div className="p-6 max-w-3xl mx-auto space-y-8">
-        <div className="bg-gradient-to-br from-[#1A264F] to-[#111A3A] p-8 rounded-3xl border border-white/5">
-          <p className="text-slate-400 text-sm">Available Balance</p>
-          <p className="text-4xl font-bold">${parseFloat(user?.balance || 0).toFixed(2)} USDT</p>
-          <p className="text-teal-400 text-xs mt-3 flex items-center gap-1"><AlertCircle size={12}/> Your limit: Min ${vipConfig.minWithdraw} for {vipConfig.name}</p>
+      <div className="bg-[#111A3A] p-5 flex items-center justify-between border-b border-white/5 sticky top-0 z-50"><button onClick={onClose}><ArrowLeft size={20} /></button><h2 className="font-bold">Withdraw Assets</h2><div className="w-10"></div></div>
+      
+      <div className="p-6 max-w-3xl mx-auto space-y-6">
+        <div className="bg-gradient-to-br from-[#1A264F] to-[#111A3A] p-6 rounded-3xl border border-white/5 shadow-2xl">
+          <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Total Available</p>
+          <p className="text-4xl font-black text-white">${totalBalance.toFixed(2)} <span className="text-sm text-teal-400 font-normal">USDT</span></p>
+          <div className="mt-4 flex items-center gap-2 text-yellow-500 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20">
+             <AlertCircle size={14}/> <span className="text-[10px] font-bold">Min: ${vipConfig.minWithdraw} USDT ({vipConfig.name})</span>
+          </div>
         </div>
-        <div className="space-y-5">
-          <input type="number" placeholder="Withdrawal Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#111A3A] border border-white/5 p-4 rounded-xl text-white" />
-          <input type="text" placeholder="TRC20 / BEP20 Wallet Address" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#111A3A] border border-white/5 p-4 rounded-xl text-white" />
-          <AuthInput icon={KeyRound} type="password" placeholder="Fund Password" value={secPassword} onChange={(e) => setSecPassword(e.target.value)} />
-          <button onClick={handleWithdrawRequest} className="w-full bg-teal-400 text-[#0B132B] font-bold py-4 rounded-xl">Process Withdrawal</button>
+
+        <div className="space-y-4">
+          <div>
+            <p className="text-slate-400 text-xs mb-2 uppercase font-bold">1. Select Coin & Network</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+               {WITHDRAW_COINS.map(item => (
+                 <button key={item.id} onClick={() => setSelectedCoin(item)} className={`p-3 rounded-2xl border flex flex-col items-start transition-all ${selectedCoin.id === item.id ? 'bg-teal-500/20 border-teal-400' : 'bg-[#111A3A] border-white/5'}`}>
+                    <span className={`text-xs font-black ${selectedCoin.id === item.id ? 'text-teal-400' : 'text-white'}`}>{item.coin}</span>
+                    <span className="text-[9px] text-slate-500 font-mono mt-0.5">{item.network}</span>
+                 </button>
+               ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-slate-400 text-xs uppercase font-bold">2. Payment Details</p>
+            <div className="relative">
+               <Wallet className="absolute left-4 top-4 text-slate-500" size={18}/>
+               <input type="text" placeholder={`${selectedCoin.coin} (${selectedCoin.network}) Address`} value={address} onChange={(e) => setAddress(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none" />
+            </div>
+            <div className="relative">
+               <span className="absolute left-4 top-4 text-slate-500 font-bold">$</span>
+               <input type="number" placeholder="Amount to Withdraw" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none" />
+            </div>
+            <AuthInput icon={KeyRound} type="password" placeholder="Fund Password" value={secPassword} onChange={(e) => setSecPassword(e.target.value)} />
+            
+            <div className="bg-teal-500/5 p-4 rounded-2xl border border-teal-500/10 flex justify-between items-center">
+               <span className="text-slate-400 text-xs">Estimated Arrival</span>
+               <span className="text-teal-400 font-bold text-sm">Within 24 Hours</span>
+            </div>
+
+            <button onClick={handleWithdrawRequest} className="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] font-black py-4 rounded-2xl shadow-xl shadow-teal-500/10 hover:scale-[1.02] active:scale-[0.98] transition-all">Submit Request</button>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -267,69 +328,42 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw }) => {
 };
 
 // ==========================================
-// 5. NETWORK ACTIVITY
+// 5. DASHBOARD TABS
 // ==========================================
-const LiveMemberActivity = () => {
-  const [activities, setActivities] = useState([]);
-  useEffect(() => {
-    const names = ['alex', 'whale', 'trade', 'king', 'pro', 'max', 'mike'];
-    let gen = [];
-    for (let i = 0; i < 10; i++) {
-      gen.push({ type: Math.random() > 0.5 ? 'recharge' : 'withdraw', user: `${names[Math.floor(Math.random()*names.length)]}${Math.floor(Math.random()*999)}***`, amount: (Math.random()*250 + 50).toFixed(2) });
-    }
-    setActivities(gen);
-  }, []);
+const HomeTab = ({ user, onAction, onUnlockVip }) => {
+  const totalBalance = (user?.balance || 0) + (user?.refer_balance || 0);
   return (
-    <div className="mb-10">
-      <div className="flex items-center gap-2 mb-4"><div className="h-3 w-3 rounded-full bg-red-500 animate-ping"></div><h3 className="font-bold">Real-time Activity</h3></div>
-      <div className="h-[180px] overflow-hidden relative rounded-2xl bg-[#111A3A]/60 border border-white/5">
-        <motion.div animate={{ y: ["0%", "-50%"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }} className="p-4 space-y-3">
-          {[...activities, ...activities].map((act, i) => (
-            <div key={i} className="bg-white/[0.03] p-3 rounded-xl flex justify-between items-center border border-white/5">
-              <div className="flex items-center gap-3"><Activity size={14} className={act.type === 'recharge' ? 'text-teal-400' : 'text-blue-400'}/><p className="text-sm font-mono">{act.user}</p></div>
-              <span className={act.type === 'recharge' ? 'text-teal-400' : 'text-white'}>${act.amount}</span>
-            </div>
-          ))}
-        </motion.div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
+      <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-8 relative overflow-hidden">
+        <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
+        <span className="text-teal-400 font-bold text-sm tracking-widest uppercase mb-2">Total Assets</span>
+        <h2 className="text-4xl font-black text-white leading-tight">${totalBalance.toFixed(2)} <span className="text-sm font-normal text-slate-400">USDT</span></h2>
       </div>
-    </div>
+      <div className="grid grid-cols-3 gap-4 mb-10">
+        {['Recharge', 'Withdraw', 'Invite'].map((item, i) => (
+          <div key={i} onClick={() => onAction(item === 'Invite' ? 'Invite Friends' : item)} className="flex flex-col items-center gap-3 p-4 bg-[#111A3A]/80 rounded-2xl border border-white/5 hover:border-teal-500/50 cursor-pointer shadow-lg">
+            <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-teal-400">{i === 0 ? <Zap size={20}/> : i === 1 ? <ArrowDownRight size={20}/> : <Users size={20}/>}</div>
+            <span className="text-[10px] font-bold uppercase tracking-widest">{item}</span>
+          </div>
+        ))}
+      </div>
+      <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Globe size={20} className="text-teal-400"/> Investment Hall</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        {Object.entries(VIP_TIERS).map(([level, data]) => level > 0 && (
+          <div key={level} onClick={() => onUnlockVip(level, data.cost)} className="bg-[#111A3A]/80 p-5 rounded-3xl border border-white/5 hover:border-teal-500/50 cursor-pointer relative shadow-xl">
+            <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5">
+              <UsdtIcon />
+              <div className="absolute top-3 left-3 bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded font-bold">VIP {level}</div>
+              {user?.ownedVips && user.ownedVips[level] && user.ownedVips[level].expiry > Date.now() && <div className="absolute bottom-2 right-2 bg-teal-500 text-white rounded-full p-1"><CheckCircle2 size={12}/></div>}
+            </div>
+            <p className="text-[10px] text-slate-500 uppercase mb-1 font-bold">Required Fund</p>
+            <p className="text-lg font-black text-white">${data.cost}.00</p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
   );
 };
-
-// ==========================================
-// 6. DASHBOARD TABS
-// ==========================================
-const HomeTab = ({ user, onAction, onUnlockVip }) => (
-  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
-    <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-8">
-      <span className="text-teal-400 font-bold text-sm tracking-widest uppercase mb-2">Global Enterprise</span>
-      <h2 className="text-3xl font-black text-white leading-tight">Elite Trading<br/>Portfolio.</h2>
-    </div>
-    <div className="grid grid-cols-3 gap-4 mb-10">
-      {['Recharge', 'Withdraw', 'Invite'].map((item, i) => (
-        <div key={i} onClick={() => onAction(item === 'Invite' ? 'Invite Friends' : item)} className="flex flex-col items-center gap-3 p-4 bg-[#111A3A]/80 rounded-2xl border border-white/5 hover:border-teal-500/50 cursor-pointer">
-          <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">{i === 0 ? '+' : i === 1 ? '↑' : <Users size={20}/>}</div>
-          <span className="text-[10px] font-bold uppercase">{item}</span>
-        </div>
-      ))}
-    </div>
-    <LiveMemberActivity />
-    <h3 className="text-lg font-bold mb-6">Investment Hall</h3>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-      {Object.entries(VIP_TIERS).map(([level, data]) => level > 0 && (
-        <div key={level} onClick={() => onUnlockVip(level, data.cost)} className="bg-[#111A3A]/80 p-5 rounded-3xl border border-white/5 hover:border-teal-500/50 cursor-pointer relative">
-          <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5">
-            <UsdtIcon />
-            <div className="absolute top-3 left-3 bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded font-bold">VIP {level}</div>
-            {user?.ownedVips && user.ownedVips[level] && <div className="absolute bottom-2 right-2 bg-teal-500 text-white rounded-full p-1"><CheckCircle2 size={12}/></div>}
-          </div>
-          <p className="text-[10px] text-slate-500 uppercase mb-1">Required Fund</p>
-          <p className="text-lg font-black">${data.cost}.00</p>
-        </div>
-      ))}
-    </div>
-  </motion.div>
-);
 
 const TaskTab = ({ user, onClaimDaily }) => {
   const [timers, setTimers] = useState({});
@@ -342,10 +376,8 @@ const TaskTab = ({ user, onClaimDaily }) => {
       vipKeys.forEach(level => {
         const vipData = ownedVips[level];
         if (Date.now() > vipData.expiry) { newTimers[level] = "Expired"; return; }
-
         const lastClaim = vipData.lastClaimTime;
         if (!lastClaim) { newTimers[level] = "Available Now"; return; }
-        
         const diff = (lastClaim + 24 * 60 * 60 * 1000) - Date.now();
         if (diff <= 0) newTimers[level] = "Available Now";
         else {
@@ -358,32 +390,32 @@ const TaskTab = ({ user, onClaimDaily }) => {
       setTimers(newTimers);
     }, 1000);
     return () => clearInterval(interval);
-  }, [ownedVips]);
+  }, [ownedVips, vipKeys]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
       {vipKeys.length === 0 ? (
-        <div className="bg-[#111A3A]/50 rounded-3xl border border-white/5 p-16 text-center">
+        <div className="bg-[#111A3A]/50 rounded-3xl border border-white/5 p-16 text-center shadow-2xl border-dashed">
           <Activity size={48} className="text-slate-600 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold">No Active Nodes</h3>
+          <h3 className="text-2xl font-bold text-white">No Active Nodes</h3>
+          <p className="text-slate-500 text-sm mt-2">Unlock a VIP portfolio to start claiming rewards.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          <h3 className="font-bold text-lg mb-4">Your Trading Nodes</h3>
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Clock size={20} className="text-teal-400"/> Trading Operations</h3>
           {vipKeys.map(level => {
             const status = timers[level] || "Loading...";
             const isReady = status === "Available Now";
             const isExpired = status === "Expired";
-            
             return (
-              <div key={level} className={`p-6 rounded-3xl border border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 ${isExpired ? 'bg-red-500/10' : 'bg-[#111A3A]'}`}>
+              <div key={level} className={`p-6 rounded-3xl border border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 shadow-lg ${isExpired ? 'bg-red-500/10' : 'bg-[#111A3A]'}`}>
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[#0B132B] rounded-xl flex justify-center items-center"><span className="text-yellow-500 font-bold">V{level}</span></div>
-                  <div><p className="font-bold">VIP {level} Node</p><p className="text-sm text-slate-400">Yield: ${VIP_TIERS[level].daily}/day</p></div>
+                  <div className="w-14 h-14 bg-[#0B132B] rounded-2xl flex justify-center items-center shadow-inner"><span className="text-yellow-500 font-black text-xl">V{level}</span></div>
+                  <div><p className="font-bold text-white text-lg">VIP {level} Node</p><p className="text-sm text-teal-400 font-bold">${VIP_TIERS[level].daily} / Day</p></div>
                 </div>
                 <div className="flex gap-4 w-full md:w-auto">
-                  <div className="bg-[#0B132B] px-4 py-2 rounded-lg text-teal-400 font-mono text-sm flex items-center gap-2">{isExpired ? <AlertCircle size={14}/> : <Clock size={14}/>} {status}</div>
-                  <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`px-4 py-2 rounded-xl font-bold ${isReady ? 'bg-teal-400 text-black' : 'bg-slate-800 text-slate-500'}`}>
+                  <div className="bg-[#0B132B] px-4 py-3 rounded-xl text-teal-400 font-mono text-xs border border-white/5 flex items-center gap-2">{isExpired ? <AlertCircle size={14}/> : <Clock size={14}/>} {status}</div>
+                  <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`px-8 py-3 rounded-xl font-black transition-all ${isReady ? 'bg-gradient-to-r from-teal-400 to-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800 text-slate-500'}`}>
                     {isExpired ? 'Expired' : 'Claim'}
                   </button>
                 </div>
@@ -398,34 +430,32 @@ const TaskTab = ({ user, onClaimDaily }) => {
 
 const TeamTab = ({ user }) => {
   const referralLink = `${window.location.origin}/register?ref=${user?.referralCode || ''}`;
-  
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
-      <div className="bg-gradient-to-br from-[#162758] to-[#0A1128] p-8 rounded-3xl mb-8 relative border border-white/5">
-        <p className="text-sm text-teal-400 font-semibold mb-2">Multi-Tier Partner Network</p>
-        <p className="text-xs text-slate-400 mb-6 bg-white/5 p-3 rounded-lg border border-white/5">
-          🚀 <strong className="text-white">Level 1:</strong> Earn 7% on direct referrals' deposits.<br/>
-          🚀 <strong className="text-white">Level 2:</strong> Earn 3% on indirect team deposits.
+      <div className="bg-gradient-to-br from-[#162758] to-[#0A1128] p-8 rounded-3xl mb-8 relative border border-white/5 shadow-2xl">
+        <div className="absolute top-[-10%] right-[-5%] w-32 h-32 bg-teal-400/5 rounded-full blur-2xl"></div>
+        <p className="text-sm text-teal-400 font-black mb-2 uppercase tracking-widest">Partner Program</p>
+        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+          🚀 <strong className="text-white">Level 1:</strong> Earn <span className="text-teal-400 font-bold text-lg">7%</span> on direct referral deposits.<br/>
+          🚀 <strong className="text-white">Level 2:</strong> Earn <span className="text-teal-400 font-bold text-lg">3%</span> on indirect team deposits.
         </p>
-        <div className="bg-[#0B132B] p-4 rounded-2xl flex justify-between items-center border border-white/5">
-          <div className="overflow-hidden mr-4"><p className="text-xs text-slate-500">Your Invite Link</p><p className="text-sm font-bold truncate text-teal-400">{referralLink}</p></div>
-          <button onClick={() => { navigator.clipboard.writeText(referralLink); alert('Link Copied!'); }} className="bg-white/10 p-3 rounded-xl hover:bg-white/20"><Copy size={18} className="text-white"/></button>
+        <div className="bg-[#0B132B] p-4 rounded-2xl flex justify-between items-center border border-white/10 shadow-inner">
+          <div className="overflow-hidden mr-4"><p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Invite Link</p><p className="text-xs font-bold truncate text-teal-400 font-mono">{referralLink}</p></div>
+          <button onClick={() => { navigator.clipboard.writeText(referralLink); }} className="bg-teal-400 text-black p-3 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg"><Copy size={18}/></button>
         </div>
       </div>
-      
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-[#111A3A] p-6 rounded-3xl border border-white/5"><p className="text-slate-400 text-sm">Direct Team</p><p className="text-3xl font-bold">{user?.my_referrals?.length || 0}</p></div>
-        <div className="bg-[#111A3A] p-6 rounded-3xl border border-white/5"><p className="text-slate-400 text-sm">Referral Income</p><p className="text-3xl text-teal-400 font-bold">${parseFloat(user?.refer_balance || 0).toFixed(2)}</p></div>
+        <div className="bg-[#111A3A] p-6 rounded-3xl border border-white/5 shadow-xl"><p className="text-slate-500 text-[10px] font-bold uppercase mb-2">Direct Team</p><p className="text-3xl font-black text-white">{user?.my_referrals?.length || 0}</p></div>
+        <div className="bg-[#111A3A] p-6 rounded-3xl border border-white/5 shadow-xl"><p className="text-slate-500 text-[10px] font-bold uppercase mb-2">Referral Wallet</p><p className="text-3xl font-black text-teal-400">${parseFloat(user?.refer_balance || 0).toFixed(2)}</p></div>
       </div>
-
-      <h3 className="font-bold text-lg mb-4">Direct Referrals</h3>
+      <h3 className="font-bold text-lg mb-4 text-white">Direct Members</h3>
       <div className="space-y-3">
         {user?.my_referrals && user.my_referrals.length > 0 ? user.my_referrals.map((ref, idx) => (
-          <div key={idx} className="bg-[#111A3A] p-4 rounded-2xl flex justify-between items-center border border-white/5">
-            <div className="flex items-center gap-3"><Users size={16} className="text-teal-400"/><span className="font-mono text-sm">{ref.email}</span></div>
-            <span className="text-xs text-slate-500">{new Date(ref.date).toLocaleDateString()}</span>
+          <div key={idx} className="bg-[#111A3A]/60 p-4 rounded-2xl flex justify-between items-center border border-white/5">
+            <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center"><User size={16} className="text-teal-400"/></div><span className="font-mono text-sm text-slate-300">{ref.email}</span></div>
+            <span className="text-[10px] text-slate-500 font-bold uppercase">{new Date(ref.date).toLocaleDateString()}</span>
           </div>
-        )) : <p className="text-center text-slate-500 py-4">No referrals yet.</p>}
+        )) : <div className="text-center text-slate-500 py-10 bg-[#111A3A]/30 rounded-3xl border border-dashed border-white/5">No team data yet.</div>}
       </div>
     </motion.div>
   );
@@ -437,16 +467,15 @@ const VipTab = ({ user, onUnlockVip }) => (
       if (level == 0) return null;
       const vipData = user?.ownedVips && user.ownedVips[level];
       const isOwned = vipData && vipData.expiry > Date.now();
-      
       return (
-        <div key={level} className={`bg-[#111A3A] rounded-3xl p-6 flex items-center gap-6 border ${isOwned ? 'border-teal-500/50' : 'border-white/5'}`}>
-          <div className="w-20 h-20 bg-[#0B132B] rounded-2xl flex flex-col justify-center items-center"><UsdtIcon sizeClass="w-8 h-8"/><span className="text-yellow-500 text-[10px] mt-1 font-bold">Tier {level}</span></div>
+        <div key={level} className={`bg-[#111A3A] rounded-3xl p-6 flex items-center gap-6 border transition-all ${isOwned ? 'border-teal-500 shadow-[0_0_20px_rgba(45,212,191,0.1)]' : 'border-white/5'}`}>
+          <div className="w-20 h-20 bg-[#0B132B] rounded-2xl flex flex-col justify-center items-center shadow-inner"><UsdtIcon sizeClass="w-8 h-8"/><span className="text-yellow-500 text-[10px] mt-1 font-black">Tier {level}</span></div>
           <div className="flex-1">
-            <p className="font-bold">{d.name} Package</p>
-            <p className="text-teal-400 font-bold">${d.daily}/day <span className="text-slate-500 text-[10px] font-normal">(30 Days)</span></p>
-            <p className="text-slate-500 text-xs mt-1">Unlock: ${d.cost}</p>
+            <p className="font-black text-white text-lg">{d.name} Portfolio</p>
+            <p className="text-teal-400 font-black text-xl">${d.daily} <span className="text-xs font-normal text-slate-500">/ Day (30d)</span></p>
+            <p className="text-slate-500 text-[10px] mt-1 uppercase font-bold tracking-widest">Entry: ${d.cost} USDT</p>
           </div>
-          <button disabled={isOwned} onClick={() => onUnlockVip(level, d.cost)} className={`px-6 py-2 rounded-xl font-bold ${isOwned ? 'bg-slate-800 text-slate-500' : 'bg-teal-400 text-black'}`}>{isOwned ? "Active" : "Buy"}</button>
+          <button disabled={isOwned} onClick={() => onUnlockVip(level, d.cost)} className={`px-6 py-3 rounded-xl font-black shadow-lg transition-all ${isOwned ? 'bg-teal-500/10 text-teal-500 border border-teal-500/20' : 'bg-gradient-to-r from-teal-400 to-teal-500 text-black hover:scale-105'}`}>{isOwned ? "Active" : "Buy"}</button>
         </div>
       );
     })}
@@ -455,47 +484,52 @@ const VipTab = ({ user, onUnlockVip }) => (
 
 const ProfileTab = ({ user, onAction, onLogout }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
-    <div className="bg-[#111A3A] p-8 rounded-3xl text-center mb-6 border border-white/5">
-      <div className="w-20 h-20 bg-teal-500 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl shadow-lg shadow-teal-500/20">👤</div>
-      <p className="text-xl font-bold text-white">{user?.email}</p>
-      
-      <div className="bg-[#0B132B] rounded-2xl p-6 flex justify-between mt-6 border border-white/5">
-        <div className="w-1/2"><p className="text-xs text-slate-500">Main Balance</p><p className="text-2xl font-bold text-white">${parseFloat(user?.balance || 0).toFixed(2)}</p></div>
-        <div className="w-1/2 border-l border-white/5 pl-4"><p className="text-xs text-slate-500">Referral Wallet</p><p className="text-2xl font-bold text-teal-400">${parseFloat(user?.refer_balance || 0).toFixed(2)}</p></div>
+    <div className="bg-[#111A3A] p-8 rounded-[40px] text-center mb-6 border border-white/5 shadow-2xl relative overflow-hidden">
+      <div className="absolute top-[-20%] left-[-20%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
+      <div className="w-24 h-24 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl shadow-2xl shadow-teal-500/20 border-4 border-white/10">👤</div>
+      <p className="text-xl font-black text-white">{user?.email}</p>
+      <div className="bg-[#0B132B] rounded-3xl p-6 flex justify-between mt-8 border border-white/5 shadow-inner">
+        <div className="w-1/2"><p className="text-[10px] text-slate-500 font-black uppercase mb-1">Main Wallet</p><p className="text-2xl font-black text-white">${parseFloat(user?.balance || 0).toFixed(2)}</p></div>
+        <div className="w-1/2 border-l border-white/5 pl-4"><p className="text-[10px] text-slate-500 font-black uppercase mb-1">Referral Wallet</p><p className="text-2xl font-black text-teal-400">${parseFloat(user?.refer_balance || 0).toFixed(2)}</p></div>
       </div>
-      
       <div className="grid grid-cols-2 gap-4 mt-6">
-         <button onClick={() => onAction('Recharge')} className="flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-teal-500 text-black font-bold py-3.5 rounded-xl"><Zap size={18}/> Deposit</button>
-         <button onClick={() => onAction('Withdraw')} className="flex items-center justify-center gap-2 bg-white/5 py-3.5 rounded-xl border border-white/10 hover:bg-white/10"><ArrowLeft size={18}/> Withdraw</button>
+         <button onClick={() => onAction('Recharge')} className="flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-teal-500 text-black font-black py-4 rounded-2xl shadow-xl shadow-teal-500/20 transition-all hover:scale-[1.02]"><Zap size={20}/> Deposit</button>
+         <button onClick={() => onAction('Withdraw')} className="flex items-center justify-center gap-2 bg-white/5 py-4 rounded-2xl border border-white/10 text-white font-black hover:bg-white/10 transition-all"><ArrowLeft size={20}/> Withdraw</button>
       </div>
     </div>
 
-    {/* 🟢 FULL TRANSACTION HISTORY W/ STATUS */}
-    <div className="bg-[#111A3A] p-6 rounded-3xl mb-6 border border-white/5">
-      <h3 className="font-bold flex items-center gap-2 mb-4"><History size={18} className="text-teal-400"/> Transaction History</h3>
+    <div className="bg-[#111A3A] p-6 rounded-[35px] mb-6 border border-white/5 shadow-2xl">
+      <h3 className="font-black text-white flex items-center gap-2 mb-6 uppercase tracking-widest text-sm"><History size={18} className="text-teal-400"/> Transactions</h3>
       <div className="space-y-3">
         {user?.tx_history && user.tx_history.length > 0 ? [...user.tx_history].reverse().slice(0, 15).map((tx, idx) => (
-          <div key={idx} className="flex justify-between items-center bg-[#0B132B] p-3 rounded-xl border border-white/5">
+          <div key={idx} className="flex justify-between items-center bg-[#0B132B] p-4 rounded-2xl border border-white/5">
             <div>
-               <p className="text-sm font-bold text-white">{tx.type}</p>
-               <p className="text-[10px] text-slate-400 mt-0.5">
+               <p className="text-sm font-black text-white">{tx.type}</p>
+               <p className="text-[10px] text-slate-500 mt-1 font-bold">
                  {new Date(tx.date).toLocaleString()} 
-                 {/* 🟢 PENDING STATUS DISPLAY */}
-                 {tx.status && <span className="text-yellow-500 ml-2 bg-yellow-500/10 px-1.5 py-0.5 rounded font-bold">[{tx.status}]</span>}
+                 {/* 🟢 PROFESSIONAL STATUS BADGES */}
+                 {tx.status && (
+                   <span className={`ml-3 px-2 py-0.5 rounded-full font-black text-[9px] uppercase ${tx.status === 'Done' ? 'bg-teal-500/20 text-teal-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
+                     {tx.status === 'Done' ? 'Success' : tx.status}
+                   </span>
+                 )}
                </p>
             </div>
-            <span className={`font-bold ${tx.amount > 0 ? 'text-teal-400' : 'text-red-400'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} USDT</span>
+            <span className={`font-black text-sm ${tx.amount > 0 ? 'text-teal-400' : 'text-red-400'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} <span className="text-[10px] font-normal">USDT</span></span>
           </div>
-        )) : <p className="text-sm text-slate-500 text-center">No history found.</p>}
+        )) : <div className="text-center text-slate-500 py-10">No transaction logs.</div>}
       </div>
     </div>
 
-    <div onClick={onLogout} className="bg-[#111A3A] p-5 rounded-2xl text-red-400 flex justify-between items-center cursor-pointer border border-white/5 hover:bg-red-500/10"><div className="flex items-center gap-3"><LogOut size={20}/> Secure Disconnect</div></div>
+    <div onClick={onLogout} className="bg-red-500/10 p-5 rounded-2xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/20 hover:bg-red-500/20 transition-all group">
+       <div className="flex items-center gap-3 font-black text-sm uppercase tracking-widest"><LogOut size={20}/> Secure Logout</div>
+       <ChevronRight size={18} className="opacity-30 group-hover:opacity-100 transition-all"/>
+    </div>
   </motion.div>
 );
 
 // ==========================================
-// 7. MAIN DASHBOARD LAYOUT & PROTECTED ROUTE 
+// 7. MAIN LOGIC & ROUTING
 // ==========================================
 const ProtectedRoute = ({ children }) => {
   return localStorage.getItem('userEmail') ? children : <Navigate to="/login" replace />;
@@ -506,34 +540,23 @@ const DashboardLayout = () => {
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdrawal, setShowWithdrawal] = useState(false);
   const [user, setUser] = useState(null);
+  const [popup, setPopup] = useState(null); // 🟢 Custom Popup State
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCloudData = async () => {
       const email = localStorage.getItem('userEmail');
       if (!email) return navigate('/login');
-      
-      const { data, error } = await supabase.from('users').select('*').eq('email', email).single();
-      
+      const { data } = await supabase.from('users').select('*').eq('email', email).single();
       if (data) {
         setUser({
-          email: data.email,
-          balance: data.balance || 0,
-          refer_balance: data.refer_balance || 0,
-          totalRecharge: data.total_recharge || 0,
-          ownedVips: data.owned_vips || {},
-          secPassword: data.sec_password,
-          referralCode: data.referral_code,
-          referredBy: data.referred_by,
-          teamSize: data.team_size || 0,
-          teamRecharge: data.team_recharge || 0,
-          my_referrals: data.my_referrals || [],
-          tx_history: data.tx_history || []
+          email: data.email, balance: data.balance || 0, refer_balance: data.refer_balance || 0,
+          totalRecharge: data.total_recharge || 0, ownedVips: data.owned_vips || {},
+          secPassword: data.sec_password, referralCode: data.referral_code,
+          referredBy: data.referred_by, teamSize: data.team_size || 0,
+          my_referrals: data.my_referrals || [], tx_history: data.tx_history || []
         });
-      } else {
-        localStorage.removeItem('userEmail');
-        navigate('/login');
-      }
+      } else { localStorage.removeItem('userEmail'); navigate('/login'); }
     };
     fetchCloudData();
   }, [navigate, showRecharge]);
@@ -541,63 +564,65 @@ const DashboardLayout = () => {
   const syncUserToCloud = async (updatedUser) => {
     setUser(updatedUser); 
     await supabase.from('users').update({
-      balance: updatedUser.balance,
-      owned_vips: updatedUser.ownedVips,
-      tx_history: updatedUser.tx_history
+      balance: updatedUser.balance, owned_vips: updatedUser.ownedVips, tx_history: updatedUser.tx_history
     }).eq('email', updatedUser.email);
+  };
+
+  const showPopup = (message, type = 'success') => {
+    setPopup({ message, type });
+    setTimeout(() => setPopup(null), 4000);
   };
 
   const handleVipUnlock = async (level, cost) => {
     const owned = user.ownedVips || {};
-    if (owned[level] && owned[level].expiry > Date.now()) return alert(`You already have an active VIP ${level}!`);
-    if (user.balance < cost) return setShowRecharge(true);
+    if (owned[level] && owned[level].expiry > Date.now()) return showPopup(`VIP ${level} is already active!`, 'error');
+    
+    // 🟢 Merged Balance Logic
+    const totalBalance = user.balance + user.refer_balance;
+    if (totalBalance < cost) return setShowRecharge(true);
     
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    const historyEntry = { type: `Unlocked VIP ${level}`, amount: -cost, date: new Date().toISOString() };
     
-    // 🟢 VIP PURCHASE HISTORY ENTRY
-    const historyEntry = { type: `Purchased VIP ${level}`, amount: -cost, date: new Date().toISOString() };
-    
-    const updated = { 
-      ...user, 
-      balance: user.balance - cost, 
-      ownedVips: { ...owned, [level]: { lastClaimTime: null, expiry: Date.now() + thirtyDaysMs } },
-      tx_history: [...(user.tx_history || []), historyEntry]
-    };
+    // Deduct from Main Balance first, then referral
+    let newBalance = user.balance;
+    let newReferBalance = user.refer_balance;
+    if (newBalance >= cost) newBalance -= cost;
+    else { const diff = cost - newBalance; newBalance = 0; newReferBalance -= diff; }
+
+    const updated = { ...user, balance: newBalance, refer_balance: newReferBalance, ownedVips: { ...owned, [level]: { lastClaimTime: null, expiry: Date.now() + thirtyDaysMs } }, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
-    alert(`Successfully Acquired VIP ${level}. Valid for 30 Days.`);
+    showPopup(`You owned VIP Level ${level} Node for 30 Days!`);
   };
 
   const handleClaim = async (level, amt) => {
     const owned = user.ownedVips || {};
-    
-    // 🟢 TASK YIELD HISTORY ENTRY
-    const historyEntry = { type: `Task Yield VIP ${level}`, amount: amt, date: new Date().toISOString() };
-
-    const updated = { 
-      ...user, 
-      balance: user.balance + amt, 
-      ownedVips: { ...owned, [level]: { ...owned[level], lastClaimTime: Date.now() } },
-      tx_history: [...(user.tx_history || []), historyEntry]
-    };
+    const historyEntry = { type: `Yield VIP ${level}`, amount: amt, date: new Date().toISOString() };
+    const updated = { ...user, balance: user.balance + amt, ownedVips: { ...owned, [level]: { ...owned[level], lastClaimTime: Date.now() } }, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
-    alert(`Success! $${amt} USDT generated.`);
+    showPopup(`Success! $${amt} USDT Reward Collected.`);
   };
 
-  // 🟢 WITHDRAWAL PENDING LOGIC (24 HOURS)
-  const handleWithdrawal = async (amt, address) => {
+  const handleWithdrawal = async (amt, address, coin, network) => {
+    // 🟢 Detailed History Logging
     const historyEntry = { 
-      type: `Withdrawal to ${address.substring(0,6)}...`, 
+      type: `Withdrawal (${coin}-${network})`, 
       amount: -amt, 
       date: new Date().toISOString(),
-      status: "Pending (24h)" // 🟢 Added pending status specifically for withdrawals
+      status: "Pending (24h)",
+      address: address
     };
     
-    const updated = { ...user, balance: user.balance - amt, tx_history: [...(user.tx_history || []), historyEntry] };
+    // Deduct from balance logic
+    let newBalance = user.balance;
+    let newReferBalance = user.refer_balance;
+    if (newBalance >= amt) newBalance -= amt;
+    else { const diff = amt - newBalance; newBalance = 0; newReferBalance -= diff; }
+
+    const updated = { ...user, balance: newBalance, refer_balance: newReferBalance, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
     setShowWithdrawal(false);
-    
-    // 🟢 Inform User
-    alert('Withdrawal request submitted successfully! Your funds will be processed and transferred within 24 hours.');
+    showPopup(`Withdrawal successful in 24 Hours to ${address.substring(0,6)}...`);
   };
 
   const handleLogout = () => { localStorage.removeItem('userEmail'); navigate('/login'); };
@@ -608,25 +633,29 @@ const DashboardLayout = () => {
   return (
     <>
       <AnimatePresence>
+        {popup && <CustomPopup message={popup.message} type={popup.type} onClose={() => setPopup(null)} />}
         {showRecharge && <RechargeModal onClose={() => setShowRecharge(false)} userEmail={user.email} />}
         {showWithdrawal && <WithdrawalScreen user={user} onClose={() => setShowWithdrawal(false)} onWithdraw={handleWithdrawal} />}
       </AnimatePresence>
 
-      <div className="flex flex-col min-h-screen bg-black text-slate-200">
-        <header className="bg-[#0B132B]/80 p-4 flex justify-between items-center border-b border-white/5 sticky top-0 z-30">
-          <div className="flex items-center gap-3"><Zap size={20} className="text-teal-400 fill-teal-400" /><span className="font-bold">Thunder Platform</span></div>
+      <div className="flex flex-col min-h-screen bg-black text-slate-200 selection:bg-teal-500/30">
+        <header className="bg-[#0B132B]/80 backdrop-blur-xl p-4 flex justify-between items-center border-b border-white/5 sticky top-0 z-30">
+          <div className="flex items-center gap-3"><Zap size={22} className="text-teal-400 fill-teal-400" /><span className="font-black text-lg tracking-tighter uppercase">Thunder</span></div>
+          <div className="bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20 text-teal-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+             <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></div> Secure Node
+          </div>
         </header>
 
         <div className="flex flex-1 max-w-7xl mx-auto w-full">
-          <aside className="hidden md:flex flex-col w-64 p-6 border-r border-white/5">
+          <aside className="hidden md:flex flex-col w-64 p-6 border-r border-white/5 space-y-2 pt-8">
             <SideBtn icon={<Home size={20}/>} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-            <SideBtn icon={<List size={20}/>} label="Tasks" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
-            <SideBtn icon={<Users size={20}/>} label="Team" active={activeTab === 'team'} onClick={() => setActiveTab('team')} />
-            <SideBtn icon={<Gem size={20}/>} label="VIP" active={activeTab === 'vip'} onClick={() => setActiveTab('vip')} />
+            <SideBtn icon={<List size={20}/>} label="Task Operations" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
+            <SideBtn icon={<Users size={20}/>} label="Network Data" active={activeTab === 'team'} onClick={() => setActiveTab('team')} />
+            <SideBtn icon={<Gem size={20}/>} label="Portfolios" active={activeTab === 'vip'} onClick={() => setActiveTab('vip')} />
             <SideBtn icon={<User size={20}/>} label="Account" active={activeTab === 'me'} onClick={() => setActiveTab('me')} />
           </aside>
 
-          <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <main className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar">
             {activeTab === 'home' && <HomeTab user={user} onAction={handleAction} onUnlockVip={handleVipUnlock} />}
             {activeTab === 'task' && <TaskTab user={user} onClaimDaily={handleClaim} />}
             {activeTab === 'team' && <TeamTab user={user} />}
@@ -635,12 +664,12 @@ const DashboardLayout = () => {
           </main>
         </div>
 
-        <nav className="md:hidden fixed bottom-0 w-full bg-[#0B132B] flex justify-between px-6 py-4 z-40 border-t border-white/5">
-          <BottomBtn icon={<Home size={22}/>} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-          <BottomBtn icon={<List size={22}/>} label="Tasks" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
-          <BottomBtn icon={<Users size={22}/>} label="Team" active={activeTab === 'team'} onClick={() => setActiveTab('team')} />
-          <BottomBtn icon={<Gem size={22}/>} label="VIP" active={activeTab === 'vip'} onClick={() => setActiveTab('vip')} />
-          <BottomBtn icon={<User size={22}/>} label="Account" active={activeTab === 'me'} onClick={() => setActiveTab('me')} />
+        <nav className="md:hidden fixed bottom-0 w-full bg-[#0B132B]/90 backdrop-blur-2xl flex justify-between px-6 py-4 z-40 border-t border-white/5 pb-safe">
+          <BottomBtn icon={<Home size={24}/>} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+          <BottomBtn icon={<List size={24}/>} label="Tasks" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
+          <BottomBtn icon={<Users size={24}/>} label="Team" active={activeTab === 'team'} onClick={() => setActiveTab('team')} />
+          <BottomBtn icon={<Gem size={24}/>} label="VIP" active={activeTab === 'vip'} onClick={() => setActiveTab('vip')} />
+          <BottomBtn icon={<User size={24}/>} label="Profile" active={activeTab === 'me'} onClick={() => setActiveTab('me')} />
         </nav>
       </div>
     </>
