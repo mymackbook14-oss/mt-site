@@ -409,7 +409,6 @@ const AboutModal = ({ onClose, showPopup }) => (
       </div>
       
       <div className="p-6 overflow-y-auto custom-scrollbar space-y-4 text-sm text-slate-300">
-        
         <div className="bg-[#0B132B] p-4 rounded-2xl border border-white/5 shadow-inner">
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 flex items-center gap-2"><Server size={12}/> Tether (USDT) Official Contract</p>
           <div className="flex justify-between items-center mb-2">
@@ -529,7 +528,6 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
       
-      {/* 🟢 NEW: SCROLLING MARQUEE SYSTEM ALERT */}
       <div className="bg-[#0B132B] border border-white/5 rounded-xl p-2 mb-4 flex items-center gap-2 overflow-hidden shadow-inner">
          <Bell size={14} className="text-yellow-500 shrink-0 animate-bounce"/>
          <marquee className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">
@@ -540,7 +538,6 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
       <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-6 relative overflow-hidden shadow-2xl">
         <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
         <span className="text-teal-400 font-bold text-sm tracking-widest uppercase mb-2 drop-shadow-md">Total Assets</span>
-        {/* 🟢 TEXT GRADIENT EFFECT */}
         <h2 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 leading-tight">${totalAssets.toFixed(2)} <span className="text-sm font-normal text-slate-500">USDT</span></h2>
       </div>
 
@@ -576,7 +573,7 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
           <div key={level} onClick={() => onUnlockVip(level, data.cost)} className="bg-[#111A3A]/80 p-5 rounded-3xl border border-white/5 hover:border-teal-500/50 cursor-pointer relative shadow-xl flex flex-col justify-between hover:-translate-y-1 transition-all">
             <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5 relative shadow-inner">
               <UsdtIcon />
-              <div className="absolute top-3 left-3 bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded font-bold shadow-md">VIP {level}</div>
+              <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-[10px] px-2 py-0.5 rounded font-black shadow-md uppercase tracking-wider">VIP {level}</div>
               {user?.ownedVips && user.ownedVips[level] && user.ownedVips[level].expiry > Date.now() && <div className="absolute bottom-2 right-2 bg-teal-500 text-white rounded-full p-1 shadow-[0_0_10px_rgba(45,212,191,0.5)]"><CheckCircle2 size={12}/></div>}
             </div>
             
@@ -669,16 +666,15 @@ const TaskTab = ({ user, onClaimDaily, onRefuel }) => {
                   
                   <div className="flex gap-4 w-full md:w-auto justify-end">
                     {isOutOfFuel && !isExpired ? (
-                       <button onClick={() => onRefuel(level)} className="px-6 py-4 rounded-2xl font-black transition-all bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:scale-105 active:scale-95 animate-pulse uppercase tracking-widest text-xs flex items-center gap-2">
+                       <button onClick={() => onRefuel(level)} className="px-6 py-4 rounded-2xl font-black transition-all bg-gradient-to-r from-yellow-400 to-yellow-600 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:scale-105 active:scale-95 animate-pulse uppercase tracking-widest text-xs flex items-center gap-2">
                          <Zap size={16}/> Refuel (-${(VIP_TIERS[level].cost * 0.2).toFixed(2)})
                        </button>
                     ) : (
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="flex flex-col items-end gap-2 w-full md:w-auto">
                         <div className="bg-[#0B132B] px-4 py-2 rounded-xl text-teal-400 font-mono text-[10px] border border-white/5 flex items-center gap-2 shadow-inner">
                            {isExpired ? <AlertCircle size={12}/> : <Clock size={12}/>} {status}
                         </div>
-                        {/* 🟢 BUTTON PULSING GLOW EFFECT WHEN READY */}
-                        <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`w-full px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all ${isReady ? 'bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] shadow-[0_0_20px_rgba(45,212,191,0.5)] hover:scale-105 animate-pulse' : 'bg-[#0B132B] text-slate-500 border border-white/5'}`}>
+                        <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`w-full md:w-auto px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all ${isReady ? 'bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] shadow-[0_0_20px_rgba(45,212,191,0.5)] hover:scale-105 animate-pulse' : 'bg-[#0B132B] text-slate-500 border border-white/5'}`}>
                           {isExpired ? 'Offline' : 'Extract Yield'}
                         </button>
                       </div>
@@ -743,31 +739,66 @@ const TeamTab = ({ user, showPopup }) => {
   );
 };
 
+// 🟢 VIP TAB WITH PREMIUM CARDS AND FIX CLICK
 const VipTab = ({ user, onUnlockVip }) => (
-  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24 space-y-4">
+  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24 space-y-5">
+    
+    <div className="bg-[#111A3A] p-6 rounded-3xl border border-white/5 mb-6 text-center shadow-2xl relative overflow-hidden">
+        <div className="absolute top-[-50%] left-[20%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
+        <h3 className="text-xl font-black text-white uppercase tracking-widest relative z-10">Exclusive Node Portfolios</h3>
+        <p className="text-xs text-slate-400 mt-2 relative z-10">High-Frequency AI Trading Nodes. Guaranteed daily yields.</p>
+    </div>
+
     {Object.entries(VIP_TIERS).map(([level, d]) => {
       if (level == 0) return null;
       const vipData = user?.ownedVips && user.ownedVips[level];
       const isOwned = vipData && vipData.expiry > Date.now();
+      const monthlyEarn = d.daily * 30;
+      const roi = ((monthlyEarn / d.cost) * 100).toFixed(0);
+
       return (
-        <div key={level} className={`bg-[#111A3A] rounded-3xl p-6 flex items-center gap-6 border transition-all hover:-translate-y-1 ${isOwned ? 'border-teal-500 shadow-[0_0_20px_rgba(45,212,191,0.1)]' : 'border-white/5 shadow-xl'}`}>
-          <div className="w-20 h-20 bg-[#0B132B] rounded-2xl flex flex-col justify-center items-center shadow-inner shrink-0">
-            <UsdtIcon sizeClass="w-8 h-8"/>
-            <span className="text-yellow-500 text-[10px] mt-1 font-black">Tier {level}</span>
-          </div>
-          <div className="flex-1">
-            <p className="font-black text-white text-lg uppercase tracking-wider">VIP Level {level}</p>
-            <div className="flex items-center gap-2 mt-1">
-               <p className="text-teal-400 font-black text-xl tracking-wider">+${d.daily}</p>
-               <span className="text-[10px] font-bold text-slate-400 bg-[#0B132B] shadow-inner px-2 py-1 rounded-md ml-1 uppercase tracking-widest">/ Daily</span>
+        // 🟢 FIX: Whole card is clickable, triggering the same logic as Home tab
+        <div key={level} onClick={() => onUnlockVip(level, d.cost)} className={`cursor-pointer bg-[#0B132B] rounded-3xl p-1 relative overflow-hidden transition-all hover:-translate-y-1 ${isOwned ? 'shadow-[0_0_20px_rgba(45,212,191,0.2)]' : 'shadow-xl'}`}>
+          <div className={`absolute inset-0 bg-gradient-to-r ${isOwned ? 'from-teal-500/20 to-blue-500/20' : 'from-slate-800 to-slate-900'} opacity-50`}></div>
+          
+          <div className={`relative bg-[#111A3A] rounded-[28px] p-5 border flex flex-col md:flex-row items-center gap-6 ${isOwned ? 'border-teal-500/50' : 'border-white/5'}`}>
+            
+            {/* ROI Badge */}
+            <div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-500 to-yellow-600 text-black text-[9px] font-black px-4 py-1.5 rounded-bl-2xl rounded-tr-[28px] uppercase tracking-widest shadow-lg z-10">
+               {roi}% ROI / Month
             </div>
-            <div className="mt-2 flex items-center gap-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">
-               <p>Fee: <span className="text-white font-black tracking-wider">${d.cost} USDT</span></p>
-               <span className="w-1 h-1 bg-white/20 rounded-full"></span>
-               <p>30 Days</p>
+
+            <div className="w-24 h-24 bg-[#0B132B] rounded-2xl flex flex-col justify-center items-center shadow-inner shrink-0 border border-white/5 relative group">
+              <UsdtIcon sizeClass="w-10 h-10"/>
+              <span className="text-yellow-500 text-[10px] mt-2 font-black uppercase tracking-widest">VIP {level}</span>
+              {isOwned && <div className="absolute -top-2 -right-2 bg-teal-500 text-white rounded-full p-1 shadow-[0_0_10px_rgba(45,212,191,0.8)]"><CheckCircle2 size={14}/></div>}
             </div>
+
+            <div className="flex-1 w-full text-center md:text-left">
+              <p className="font-black text-white text-xl uppercase tracking-wider mb-1">Quantum Node V{level}</p>
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-center md:justify-start gap-2 md:gap-4 mt-3">
+                 <div className="bg-[#0B132B] px-4 py-2 rounded-xl border border-white/5 shadow-inner">
+                    <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Daily Yield</p>
+                    <p className="text-teal-400 font-black text-lg tracking-wider">+${d.daily}</p>
+                 </div>
+                 <div className="bg-[#0B132B] px-4 py-2 rounded-xl border border-white/5 shadow-inner">
+                    <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Activation Fee</p>
+                    <p className="text-white font-black text-lg tracking-wider">${d.cost}</p>
+                 </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap justify-center md:justify-start items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                 <span className="flex items-center gap-1"><Clock size={12}/> 30 Days Cycle</span>
+                 <span className="w-1 h-1 bg-white/20 rounded-full"></span>
+                 <span className="flex items-center gap-1 text-yellow-500"><Zap size={12}/> Total: ${monthlyEarn}</span>
+              </div>
+            </div>
+
+            <button onClick={(e) => { e.stopPropagation(); onUnlockVip(level, d.cost); }} className={`w-full md:w-auto px-8 py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg transition-all shrink-0 ${isOwned ? 'bg-teal-500/10 text-teal-500 border border-teal-500/20' : 'bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] hover:scale-105 shadow-[0_0_20px_rgba(45,212,191,0.3)]'}`}>
+              {isOwned ? "Activated" : "Deploy Node"}
+            </button>
           </div>
-          <button disabled={isOwned} onClick={() => onUnlockVip(level, d.cost)} className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg transition-all ${isOwned ? 'bg-teal-500/10 text-teal-500 border border-teal-500/20' : 'bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] hover:scale-105 shadow-[0_0_15px_rgba(45,212,191,0.3)]'}`}>{isOwned ? "Active" : "Buy Node"}</button>
         </div>
       );
     })}
@@ -827,7 +858,6 @@ const ProfileTab = ({ user, onAction, onLogout }) => {
          <ChevronRight size={18} className="opacity-30 group-hover:opacity-100 transition-all"/>
       </div>
 
-      {/* 🟢 NEW: RISK WARNING DISCLAIMER (TRUST HACK) */}
       <div className="text-center px-4 pb-12 pt-4">
         <div className="flex justify-center items-center gap-6 opacity-30 mb-6">
            <div className="flex flex-col items-center gap-1.5"><ShieldCheck size={20}/><span className="text-[8px] font-bold uppercase tracking-widest">SSL Secured</span></div>
@@ -858,7 +888,18 @@ const DashboardLayout = () => {
   const [showAboutModal, setShowAboutModal] = useState(false); 
   const [user, setUser] = useState(null);
   const [popup, setPopup] = useState(null);
+  
+  // 🟢 LIVE ONLINE USERS STATE
+  const [onlineUsers, setOnlineUsers] = useState(8432);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // 🟢 ONLINE USERS FLUCTUATION LOGIC (Every 20-30s)
+    const interval = setInterval(() => {
+      setOnlineUsers(prev => prev + Math.floor(Math.random() * 15) - 5); 
+    }, Math.floor(Math.random() * 10000) + 20000); 
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchCloudData = async () => {
@@ -976,10 +1017,10 @@ const DashboardLayout = () => {
           <div className="flex items-center gap-3"><Zap size={22} className="text-teal-400 fill-teal-400" /><span className="font-black text-lg tracking-tighter uppercase">Thunder</span></div>
           <div className="flex items-center gap-3">
              
-             {/* 🟢 NEW: LIVE ONLINE USERS HACK */}
+             {/* 🟢 LIVE ONLINE USERS WITH STATE */}
              <div className="hidden sm:flex items-center gap-2 text-[9px] text-slate-400 font-mono border-r border-white/10 pr-3">
                 <span className="flex h-1.5 w-1.5 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span></span>
-                8,432 Online
+                {onlineUsers.toLocaleString()} Online
              </div>
 
              <div className="hidden sm:flex items-center gap-1.5 text-[9px] text-slate-500 font-mono border-r border-white/10 pr-3">
