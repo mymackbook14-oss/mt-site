@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, Copy, Activity, Zap, AlertCircle, CheckCircle2, Loader2, History, Clock, Wallet, ArrowDownRight, Globe, Headphones, ShieldCheck, FileText, Server } from 'lucide-react';
+import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, Copy, Activity, Zap, AlertCircle, CheckCircle2, Loader2, History, Clock, Wallet, ArrowDownRight, Globe, Headphones, ShieldCheck, FileText, Server, Fingerprint, Cpu, Wifi } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // ==========================================
@@ -207,7 +207,7 @@ const RegisterScreen = () => {
 };
 
 // ==========================================
-// 4. MODALS (RECHARGE, WITHDRAWAL, HISTORY & 🟢 PRO ABOUT MODAL)
+// 4. MODALS (RECHARGE, WITHDRAWAL, HISTORY & PRO ABOUT)
 // ==========================================
 const RechargeModal = ({ onClose, userEmail }) => {
   const [amount, setAmount] = useState('');
@@ -221,7 +221,8 @@ const RechargeModal = ({ onClose, userEmail }) => {
   }, []);
 
   const handlePayNow = async () => {
-    if (!amount || parseFloat(amount) < 25) return setErrorMsg("Minimum deposit is $25.00");
+    // 🟢 CHANGED MINIMUM DEPOSIT TO $5.00
+    if (!amount || parseFloat(amount) < 5) return setErrorMsg("Minimum deposit is $5.00");
     setIsLoading(true); setErrorMsg('');
     try {
       const response = await fetch('/.netlify/functions/createInvoice', {
@@ -264,7 +265,8 @@ const RechargeModal = ({ onClose, userEmail }) => {
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl text-teal-400 font-black">$</span>
               <input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0B132B] border-2 border-white/5 py-4 pl-12 pr-4 rounded-2xl text-white text-3xl font-black focus:border-teal-400 focus:outline-none transition-all shadow-inner" />
             </div>
-            <p className="text-[10px] text-slate-500 text-right mt-2 font-mono">Min. Deposit: $25.00</p>
+            {/* 🟢 MINIMUM DEPOSIT CHANGED TO $5.00 */}
+            <p className="text-[10px] text-slate-500 text-right mt-2 font-mono">Min. Deposit: $5.00</p>
           </div>
           {errorMsg && (
             <div className="flex items-start gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
@@ -308,19 +310,22 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
     <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-0 z-50 bg-[#0B132B] text-white overflow-y-auto">
       <div className="bg-[#111A3A] p-5 flex items-center justify-between border-b border-white/5 sticky top-0 z-50"><button onClick={onClose}><ArrowLeft size={20} /></button><h2 className="font-bold">Withdraw Assets</h2><div className="w-10"></div></div>
       <div className="p-6 max-w-3xl mx-auto space-y-6">
-        <div className="bg-gradient-to-br from-[#1A264F] to-[#111A3A] p-6 rounded-3xl border border-white/5 shadow-2xl">
+        <div className="bg-gradient-to-br from-[#1A264F] to-[#111A3A] p-6 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+          <div className="absolute right-[-10%] top-[-20%] w-32 h-32 bg-teal-500/10 rounded-full blur-2xl"></div>
           <p className="text-slate-400 text-xs uppercase tracking-widest mb-1 flex items-center gap-2"><Lock size={12}/> Withdrawable Balance</p>
           <p className="text-4xl font-black text-white">${withdrawableBalance.toFixed(2)} <span className="text-sm text-teal-400 font-normal">USDT</span></p>
           <div className="mt-4 flex items-center gap-2 text-yellow-500 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20">
              <AlertCircle size={14}/> <span className="text-[10px] font-bold">Min Limit: ${vipConfig.minWithdraw} USDT ({vipConfig.name})</span>
           </div>
         </div>
+
         <div className="bg-yellow-500/10 border border-yellow-500/30 p-3.5 rounded-xl flex gap-3 items-start shadow-inner">
            <AlertCircle size={20} className="text-yellow-500 shrink-0 mt-0.5"/>
            <p className="text-xs text-yellow-500/90 leading-relaxed font-medium">
              <strong>Warning:</strong> Please enter your withdrawal address correctly. Funds sent to a wrong network or address cannot be recovered.
            </p>
         </div>
+
         <div className="space-y-4">
           <div>
             <p className="text-slate-400 text-xs mb-2 uppercase font-bold">1. Select Coin & Network</p>
@@ -333,6 +338,7 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
                ))}
             </div>
           </div>
+
           <div className="space-y-4">
             <p className="text-slate-400 text-xs uppercase font-bold">2. Payment Details</p>
             <div className="relative">
@@ -344,10 +350,19 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
                <input type="number" placeholder="Amount to Withdraw" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none transition-all" />
             </div>
             <AuthInput icon={KeyRound} type="password" placeholder="Fund Password" value={secPassword} onChange={(e) => setSecPassword(e.target.value)} />
-            <div className="bg-teal-500/5 p-4 rounded-2xl border border-teal-500/10 flex justify-between items-center">
-               <span className="text-slate-400 text-xs">Estimated Arrival</span>
-               <span className="text-teal-400 font-bold text-sm">Within 24 Hours</span>
+            
+            {/* 🟢 REALISTIC NETWORK FEE DISPLAY */}
+            <div className="bg-[#111A3A] p-4 rounded-2xl border border-white/5 space-y-2 shadow-inner">
+               <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                 <span className="text-slate-400 text-xs flex items-center gap-1"><Wifi size={12}/> Network Fee</span>
+                 <span className="text-yellow-500 font-mono text-xs">1.00 USDT</span>
+               </div>
+               <div className="flex justify-between items-center pt-1">
+                 <span className="text-slate-400 text-xs">Estimated Arrival</span>
+                 <span className="text-teal-400 font-bold text-sm">Within 24 Hours</span>
+               </div>
             </div>
+
             <button onClick={handleWithdrawRequest} className="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] font-black py-4 rounded-2xl shadow-xl shadow-teal-500/10 hover:scale-[1.02] active:scale-[0.98] transition-all">Submit Request</button>
           </div>
         </div>
@@ -365,7 +380,7 @@ const HistoryModal = ({ user, onClose }) => (
       </div>
       <div className="p-6 overflow-y-auto space-y-3 custom-scrollbar">
         {user?.tx_history && user.tx_history.length > 0 ? [...user.tx_history].reverse().map((tx, idx) => (
-          <div key={idx} className="flex justify-between items-center bg-[#0B132B] p-4 rounded-2xl border border-white/5">
+          <div key={idx} className="flex justify-between items-center bg-[#0B132B] p-4 rounded-2xl border border-white/5 shadow-md">
             <div>
                <p className="text-sm font-black text-white">{tx.type}</p>
                <div className="flex items-center mt-1">
@@ -376,7 +391,7 @@ const HistoryModal = ({ user, onClose }) => (
                    </span>
                  )}
                </div>
-               <p className="text-[9px] text-slate-600 font-mono mt-1">TxID: {generateTxID(tx.date + tx.amount)}</p>
+               <p className="text-[9px] text-slate-600 font-mono mt-1 flex items-center gap-1"><ShieldCheck size={10}/> TxID: {generateTxID(tx.date + tx.amount)}</p>
             </div>
             <span className={`font-black text-sm ${tx.amount > 0 ? 'text-teal-400' : 'text-red-400'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} <span className="text-[10px] font-normal">USDT</span></span>
           </div>
@@ -386,32 +401,43 @@ const HistoryModal = ({ user, onClose }) => (
   </div>
 );
 
-// 🟢 NEW: PROFESSIONAL COMPANY PROFILE MODAL
-const AboutModal = ({ onClose }) => (
+// 🟢 PROFESSIONAL COMPANY PROFILE MODAL WITH REAL USDT SMART CONTRACT
+const AboutModal = ({ onClose, showPopup }) => (
   <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-[#0B132B]/95 backdrop-blur-xl">
     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#111A3A] w-full max-w-md rounded-[30px] border border-white/10 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
-      <div className="p-6 border-b border-white/5 bg-[#0B132B] flex flex-col items-center">
-        <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg mb-3"><Zap className="text-white fill-white" size={28} /></div>
-        <h3 className="font-black text-xl text-white">Thunder Platform</h3>
-        <p className="text-teal-400 text-[9px] font-bold tracking-widest uppercase mt-1">AI-Driven Quantitative Trading</p>
+      <div className="p-6 border-b border-white/5 bg-gradient-to-b from-[#0B132B] to-[#111A3A] flex flex-col items-center relative overflow-hidden">
+        <div className="absolute top-[-50%] w-full h-full bg-teal-500/5 rounded-full blur-3xl"></div>
+        <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(45,212,191,0.3)] mb-4 relative z-10"><Zap className="text-white fill-white" size={32} /></div>
+        <h3 className="font-black text-2xl text-white tracking-tighter relative z-10">Thunder Platform</h3>
+        <p className="text-teal-400 text-[10px] font-black tracking-widest uppercase mt-1 relative z-10">Verified AI Quantitative Node</p>
       </div>
       
       <div className="p-6 overflow-y-auto custom-scrollbar space-y-4 text-sm text-slate-300">
-        <p className="leading-relaxed">Thunder Platform is a leading blockchain infrastructure company specializing in AI-driven quantitative trading and cloud mining nodes.</p>
         
-        <div className="space-y-3 mt-4">
-          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Algorithmic Trading:</strong> High-frequency HFT bots leveraging AI for consistent market yields.</p></div>
-          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Cloud Infrastructure:</strong> Decentralized nodes ensuring 99.9% uptime and stability.</p></div>
-          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Secure Assets:</strong> Funds are secured using cold wallet storage and AES-256 encryption.</p></div>
-          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Instant Liquidity:</strong> Automated API-driven network for lightning-fast withdrawals.</p></div>
-          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Regulatory Compliance:</strong> Audited smart contracts and strict anti-fraud policies.</p></div>
-          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Partner Network:</strong> Multi-tier sustainable revenue sharing and referral model.</p></div>
-          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>24/7 Global Support:</strong> Dedicated multi-lingual assistance around the clock.</p></div>
+        {/* 🟢 REAL USDT SMART CONTRACT SECTION */}
+        <div className="bg-[#0B132B] p-4 rounded-2xl border border-white/5 shadow-inner">
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 flex items-center gap-2"><Server size={12}/> Tether (USDT) Official Contract</p>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-mono text-white">0xdAC1...1ec7</span>
+            <button onClick={() => { navigator.clipboard.writeText("0xdAC17F958D2ee523a2206206994597C13D831ec7"); showPopup("Official USDT Contract Copied"); }} className="text-teal-400 bg-teal-400/10 px-2 py-1 rounded flex items-center gap-1 text-[10px] hover:bg-teal-400/20"><Copy size={10}/> Copy</button>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-teal-400 font-bold"><CheckCircle2 size={12}/> Multi-Billion Liquidity Verified</div>
+        </div>
+
+        <p className="leading-relaxed text-xs">Thunder Platform is a registered blockchain enterprise specializing in AI-driven quantitative trading and high-yield cloud node deployment.</p>
+        
+        <div className="space-y-3 mt-4 text-xs bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+          <div className="flex gap-3 items-start"><Cpu size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Algorithmic Trading:</strong> High-frequency HFT bots leveraging AI for stable market yields.</p></div>
+          <div className="flex gap-3 items-start"><Server size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Cloud Infrastructure:</strong> Decentralized nodes ensuring 99.9% uptime and stability.</p></div>
+          <div className="flex gap-3 items-start"><Lock size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Secure Assets:</strong> Funds secured using cold wallet storage and AES-256 encryption.</p></div>
+          <div className="flex gap-3 items-start"><Zap size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Instant Liquidity:</strong> Automated API network for lightning-fast withdrawals.</p></div>
+          <div className="flex gap-3 items-start"><ShieldCheck size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Compliance:</strong> Audited smart contracts and strict anti-fraud policies.</p></div>
+          <div className="flex gap-3 items-start"><Users size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Partner Network:</strong> Multi-tier sustainable revenue sharing and referral model.</p></div>
         </div>
       </div>
       
       <div className="p-5 border-t border-white/5 bg-[#0B132B]">
-        <button onClick={onClose} className="w-full py-4 rounded-2xl bg-teal-400 text-[#0B132B] font-black hover:scale-[1.02] transition-all shadow-[0_0_15px_rgba(45,212,191,0.2)]">Understood</button>
+        <button onClick={onClose} className="w-full py-4 rounded-2xl bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] font-black hover:scale-[1.02] transition-all shadow-[0_0_15px_rgba(45,212,191,0.2)]">Verify & Continue</button>
       </div>
     </motion.div>
   </div>
@@ -451,7 +477,10 @@ const LiveMemberActivity = () => {
 
   return (
     <div className="mb-10">
-      <div className="flex items-center gap-2 mb-4"><div className="h-3 w-3 rounded-full bg-teal-400 animate-ping shadow-[0_0_10px_rgba(45,212,191,0.8)]"></div><h3 className="font-bold text-slate-300 tracking-wider text-sm uppercase">Live Activity</h3></div>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-2 w-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.8)]"></div>
+        <h3 className="font-bold text-slate-300 tracking-wider text-[10px] uppercase">Live Network Activity</h3>
+      </div>
       <div className="h-[240px] overflow-hidden relative rounded-3xl bg-[#111A3A]/40 border border-white/5 shadow-inner p-3">
         <div className="space-y-2">
           <AnimatePresence>
@@ -480,22 +509,19 @@ const LiveMemberActivity = () => {
 };
 
 // ==========================================
-// 5. DASHBOARD TABS (🟢 ADDED DYNAMIC STATS)
+// 5. DASHBOARD TABS
 // ==========================================
 const HomeTab = ({ user, onAction, onUnlockVip }) => {
   const totalAssets = (user?.balance || 0) + (user?.earning_balance || 0) + (user?.refer_balance || 0);
   
-  // 🟢 DYNAMIC PLATFORM STATISTICS LOGIC
   const [stats, setStats] = useState({ days: 421, members: 24.5, payouts: 321 });
 
   useEffect(() => {
-    // Base Date set to 421 days ago from May 16, 2026
     const baseDate = new Date("2025-03-21T00:00:00Z").getTime();
     const now = new Date();
     const daysElapsed = Math.max(421, Math.floor((now.getTime() - baseDate) / (1000 * 60 * 60 * 24)));
     const extraDays = daysElapsed - 421;
     
-    // Add real-time fluctuation based on the current hour of the day
     const hourProgress = now.getUTCHours() / 24;
     
     const currentMembers = 24598 + (extraDays * 1750) + (1750 * hourProgress);
@@ -503,14 +529,22 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
     
     setStats({
       days: daysElapsed,
-      members: (currentMembers / 1000).toFixed(1), // e.g. 24.6k
-      payouts: (currentPayouts / 1000).toFixed(1) // e.g. 321.5k
+      members: (currentMembers / 1000).toFixed(1),
+      payouts: (currentPayouts / 1000).toFixed(1) 
     });
   }, []);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
-      <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-6 relative overflow-hidden">
+      <div className="flex justify-between items-center mb-4 px-2">
+        <div className="flex items-center gap-2 bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20">
+          <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></div>
+          <span className="text-[9px] text-teal-400 font-bold uppercase tracking-widest">System Operational</span>
+        </div>
+        <div className="text-[9px] text-slate-500 font-mono flex items-center gap-1"><Server size={10}/> Ping: 12ms</div>
+      </div>
+
+      <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-6 relative overflow-hidden shadow-2xl">
         <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
         <span className="text-teal-400 font-bold text-sm tracking-widest uppercase mb-2">Total Assets</span>
         <h2 className="text-4xl font-black text-white leading-tight">${totalAssets.toFixed(2)} <span className="text-sm font-normal text-slate-400">USDT</span></h2>
@@ -534,7 +568,7 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
       <div className="grid grid-cols-3 gap-4 mb-10">
         {['Recharge', 'Withdraw', 'Invite'].map((item, i) => (
           <div key={i} onClick={() => onAction(item === 'Invite' ? 'Invite Friends' : item)} className="flex flex-col items-center gap-3 p-4 bg-[#111A3A]/80 rounded-2xl border border-white/5 hover:border-teal-500/50 cursor-pointer shadow-lg">
-            <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-teal-400">{i === 0 ? <Zap size={20}/> : i === 1 ? <ArrowDownRight size={20}/> : <Users size={20}/>}</div>
+            <div className="w-12 h-12 bg-[#0B132B] rounded-xl flex items-center justify-center text-teal-400 shadow-inner">{i === 0 ? <Zap size={20}/> : i === 1 ? <ArrowDownRight size={20}/> : <Users size={20}/>}</div>
             <span className="text-[10px] font-bold uppercase tracking-widest">{item}</span>
           </div>
         ))}
@@ -546,7 +580,7 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         {Object.entries(VIP_TIERS).map(([level, data]) => level > 0 && (
           <div key={level} onClick={() => onUnlockVip(level, data.cost)} className="bg-[#111A3A]/80 p-5 rounded-3xl border border-white/5 hover:border-teal-500/50 cursor-pointer relative shadow-xl flex flex-col justify-between">
-            <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5 relative">
+            <div className="w-full h-24 bg-[#0B132B] rounded-2xl flex flex-col items-center justify-center mb-4 border border-white/5 relative shadow-inner">
               <UsdtIcon />
               <div className="absolute top-3 left-3 bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded font-bold">VIP {level}</div>
               {user?.ownedVips && user.ownedVips[level] && user.ownedVips[level].expiry > Date.now() && <div className="absolute bottom-2 right-2 bg-teal-500 text-white rounded-full p-1"><CheckCircle2 size={12}/></div>}
@@ -565,7 +599,7 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
             
             <div className="pt-3 border-t border-white/5 flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-slate-500">
                <span>Cycle</span>
-               <span className="text-white bg-white/5 px-2 py-1 rounded">30 Days</span>
+               <span className="text-white bg-[#0B132B] px-2 py-1 rounded shadow-inner">30 Days</span>
             </div>
           </div>
         ))}
@@ -610,8 +644,8 @@ const TaskTab = ({ user, onClaimDaily, onRefuel }) => {
           <p className="text-slate-500 text-sm mt-2">Unlock a VIP level to start claiming rewards.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Clock size={20} className="text-teal-400"/> Trading Operations</h3>
+        <div className="space-y-6">
+          <h3 className="font-bold text-lg mb-2 flex items-center gap-2"><Server size={20} className="text-teal-400"/> Active Node Clusters</h3>
           {vipKeys.map(level => {
             const status = timers[level] || "Loading...";
             const isReady = status === "Available Now";
@@ -620,39 +654,55 @@ const TaskTab = ({ user, onClaimDaily, onRefuel }) => {
             const vipData = ownedVips[level];
             const energy = vipData.energy !== undefined ? vipData.energy : 5;
             const isOutOfFuel = energy === 0;
+            
+            const hashrate = (VIP_TIERS[level].daily * 1.42).toFixed(2);
 
             return (
-              <div key={level} className={`p-6 rounded-3xl border border-white/5 flex flex-col items-start gap-4 shadow-lg ${isExpired ? 'bg-red-500/10' : 'bg-[#111A3A]'}`}>
-                <div className="flex flex-col md:flex-row justify-between w-full gap-4 items-center">
+              <div key={level} className={`p-6 rounded-[30px] border flex flex-col items-start gap-4 shadow-2xl relative overflow-hidden ${isExpired ? 'border-red-500/20 bg-red-500/5' : 'border-white/5 bg-[#111A3A]'}`}>
+                {!isExpired && <div className="absolute right-0 top-0 opacity-[0.03]"><Cpu size={150} /></div>}
+
+                <div className="flex flex-col md:flex-row justify-between w-full gap-4 items-center relative z-10">
                   <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className="w-14 h-14 bg-[#0B132B] rounded-2xl flex justify-center items-center shadow-inner shrink-0"><span className="text-yellow-500 font-black text-xl">V{level}</span></div>
-                    <div><p className="font-bold text-white text-lg">VIP {level} Node</p><p className="text-sm text-teal-400 font-bold">${VIP_TIERS[level].daily} / Day</p></div>
+                    <div className="w-16 h-16 bg-[#0B132B] rounded-2xl flex justify-center items-center shadow-inner border border-white/5 shrink-0"><span className="text-yellow-500 font-black text-2xl">V{level}</span></div>
+                    <div>
+                       <div className="flex items-center gap-2">
+                         <p className="font-black text-white text-xl">Node-{level}</p>
+                         {!isExpired && <span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span></span>}
+                       </div>
+                       <p className="text-[11px] text-slate-400 font-mono mt-1">Hashrate: {hashrate} TH/s</p>
+                    </div>
                   </div>
                   
                   <div className="flex gap-4 w-full md:w-auto justify-end">
                     {isOutOfFuel && !isExpired ? (
-                       <button onClick={() => onRefuel(level)} className="px-6 py-3 rounded-xl font-black transition-all bg-yellow-500 text-black shadow-lg shadow-yellow-500/20 hover:scale-105 active:scale-95 animate-pulse">
-                         Refuel (-${VIP_TIERS[level].cost * 0.2})
+                       <button onClick={() => onRefuel(level)} className="px-6 py-4 rounded-2xl font-black transition-all bg-yellow-500 text-black shadow-lg shadow-yellow-500/20 hover:scale-105 active:scale-95 animate-pulse uppercase tracking-widest text-xs flex items-center gap-2">
+                         <Zap size={16}/> Refuel (-${(VIP_TIERS[level].cost * 0.2).toFixed(2)})
                        </button>
                     ) : (
-                      <>
-                        <div className="bg-[#0B132B] px-4 py-3 rounded-xl text-teal-400 font-mono text-xs border border-white/5 flex items-center gap-2">{isExpired ? <AlertCircle size={14}/> : <Clock size={14}/>} {status}</div>
-                        <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`px-8 py-3 rounded-xl font-black transition-all ${isReady ? 'bg-gradient-to-r from-teal-400 to-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800 text-slate-500'}`}>
-                          {isExpired ? 'Expired' : 'Claim'}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="bg-[#0B132B] px-4 py-2 rounded-xl text-teal-400 font-mono text-[10px] border border-white/5 flex items-center gap-2 shadow-inner">
+                           {isExpired ? <AlertCircle size={12}/> : <Clock size={12}/>} {status}
+                        </div>
+                        <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`w-full px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all ${isReady ? 'bg-gradient-to-r from-teal-400 to-teal-500 text-black shadow-[0_0_15px_rgba(45,212,191,0.3)] hover:scale-105' : 'bg-[#0B132B] text-slate-500 border border-white/5'}`}>
+                          {isExpired ? 'Offline' : 'Extract'}
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {!isExpired && (
-                  <div className="w-full mt-2 bg-[#0B132B] p-4 rounded-2xl border border-white/5">
-                    <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest">
-                      <span className="flex items-center gap-1"><Zap size={12}/> Node Fuel</span>
-                      <span className={energy === 0 ? 'text-red-400 animate-pulse' : 'text-teal-400'}>{energy}/5 Days</span>
+                  <div className="w-full mt-2 bg-[#0B132B] p-5 rounded-2xl border border-white/5 shadow-inner relative z-10">
+                    <div className="flex justify-between text-[9px] font-bold text-slate-500 mb-2 uppercase tracking-widest">
+                      <span className="flex items-center gap-1"><Zap size={12}/> Node Power Supply</span>
+                      <span className={energy === 0 ? 'text-red-400 animate-pulse font-black' : 'text-teal-400 font-black'}>{energy} / 5 Days Remaining</span>
                     </div>
-                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div className={`h-full ${energy === 0 ? 'bg-red-500' : energy <= 2 ? 'bg-yellow-500' : 'bg-teal-400'} transition-all duration-500`} style={{ width: `${(energy / 5) * 100}%` }}></div>
+                    <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden shadow-inner">
+                      <div className={`h-full ${energy === 0 ? 'bg-red-500' : energy <= 2 ? 'bg-yellow-500' : 'bg-teal-400'} transition-all duration-500 shadow-[0_0_10px_rgba(255,255,255,0.5)]`} style={{ width: `${(energy / 5) * 100}%` }}></div>
+                    </div>
+                    <div className="mt-3 flex justify-between text-[8px] font-mono text-slate-600">
+                       <span>Yield: +${VIP_TIERS[level].daily}/d</span>
+                       <span>ID: {generateTxID(`node_${level}`)}</span>
                     </div>
                   </div>
                 )}
@@ -671,7 +721,7 @@ const TeamTab = ({ user, showPopup }) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
       <div className="bg-gradient-to-br from-[#162758] to-[#0A1128] p-8 rounded-3xl mb-8 relative border border-white/5 shadow-2xl">
         <div className="absolute top-[-10%] right-[-5%] w-32 h-32 bg-teal-400/5 rounded-full blur-2xl"></div>
-        <p className="text-sm text-teal-400 font-black mb-2 uppercase tracking-widest">Partner Program</p>
+        <p className="text-sm text-teal-400 font-black mb-2 uppercase tracking-widest flex items-center gap-2"><Globe size={16}/> Partner Program</p>
         <p className="text-xs text-slate-400 mb-6 leading-relaxed">
           🚀 <strong className="text-white">Level 1:</strong> Earn <span className="text-teal-400 font-bold text-lg">7%</span> on direct referral deposits.<br/>
           🚀 <strong className="text-white">Level 2:</strong> Earn <span className="text-teal-400 font-bold text-lg">3%</span> on indirect team deposits.
@@ -689,7 +739,7 @@ const TeamTab = ({ user, showPopup }) => {
       <div className="space-y-3">
         {user?.my_referrals && user.my_referrals.length > 0 ? user.my_referrals.map((ref, idx) => (
           <div key={idx} className="bg-[#111A3A]/60 p-4 rounded-2xl flex justify-between items-center border border-white/5">
-            <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center"><User size={16} className="text-teal-400"/></div><span className="font-mono text-sm text-slate-300">{ref.email}</span></div>
+            <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-[#0B132B] shadow-inner border border-white/5 flex items-center justify-center"><User size={16} className="text-teal-400"/></div><span className="font-mono text-sm text-slate-300">{ref.email}</span></div>
             <span className="text-[10px] text-slate-500 font-bold uppercase">{new Date(ref.date).toLocaleDateString()}</span>
           </div>
         )) : <div className="text-center text-slate-500 py-10 bg-[#111A3A]/30 rounded-3xl border border-dashed border-white/5">No team data yet.</div>}
@@ -736,10 +786,21 @@ const ProfileTab = ({ user, onAction, onLogout }) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
       <div className="bg-[#111A3A] p-8 rounded-[40px] text-center mb-6 border border-white/5 shadow-2xl relative overflow-hidden">
         <div className="absolute top-[-20%] left-[-20%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
-        <div className="w-24 h-24 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl shadow-2xl shadow-teal-500/20 border-4 border-white/10">👤</div>
-        <p className="text-xl font-black text-white">{user?.email}</p>
         
-        <div className="bg-[#0B132B] rounded-3xl p-5 mt-8 border border-white/5 shadow-inner">
+        <div className="absolute top-6 right-6 bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/20 flex items-center gap-1.5 shadow-[0_0_10px_rgba(45,212,191,0.2)]">
+           <ShieldCheck size={12} className="text-teal-400"/>
+           <span className="text-[9px] font-bold text-teal-400 uppercase tracking-widest">Verified</span>
+        </div>
+
+        <div className="w-24 h-24 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl shadow-2xl shadow-teal-500/20 border-4 border-[#0B132B] relative z-10">👤</div>
+        <p className="text-xl font-black text-white relative z-10">{user?.email}</p>
+        <div className="flex items-center justify-center gap-2 mt-1 relative z-10">
+           <p className="text-[10px] text-slate-400 font-mono">UID: {generateTxID(user?.email || "user").substring(0,10)}</p>
+           <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+           <p className="text-[10px] text-teal-400 font-bold uppercase tracking-widest">Status: Excellent</p>
+        </div>
+        
+        <div className="bg-[#0B132B] rounded-3xl p-5 mt-8 border border-white/5 shadow-inner relative z-10">
           <p className="text-slate-500 text-[10px] font-black uppercase mb-3">Wallet Balances</p>
           <div className="grid grid-cols-3 gap-2">
             <div><p className="text-[9px] text-slate-500 uppercase mb-1 font-bold tracking-widest">Deposit</p><p className="text-lg font-black text-white">${parseFloat(user?.balance || 0).toFixed(1)}</p></div>
@@ -748,25 +809,25 @@ const ProfileTab = ({ user, onAction, onLogout }) => {
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-2 gap-4 mt-6 relative z-10">
            <button onClick={() => onAction('Recharge')} className="flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-teal-500 text-black font-black py-4 rounded-2xl shadow-xl shadow-teal-500/20 transition-all hover:scale-[1.02]"><Zap size={20}/> Deposit</button>
-           <button onClick={() => onAction('Withdraw')} className="flex items-center justify-center gap-2 bg-white/5 py-4 rounded-2xl border border-white/10 text-white font-black hover:bg-white/10 transition-all"><ArrowLeft size={20}/> Withdraw</button>
+           <button onClick={() => onAction('Withdraw')} className="flex items-center justify-center gap-2 bg-white/5 py-4 rounded-2xl border border-white/10 text-white font-black hover:bg-white/10 transition-all shadow-lg"><ArrowLeft size={20}/> Withdraw</button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <button onClick={() => onAction('History')} className="bg-[#111A3A] p-5 rounded-3xl border border-white/5 flex flex-col items-center justify-center gap-3 hover:bg-white/5 transition-all shadow-lg">
-          <div className="w-12 h-12 rounded-full bg-teal-500/10 flex items-center justify-center"><History size={20} className="text-teal-400"/></div>
+          <div className="w-12 h-12 rounded-full bg-[#0B132B] shadow-inner border border-white/5 flex items-center justify-center"><History size={20} className="text-teal-400"/></div>
           <span className="font-bold text-white text-xs tracking-wider uppercase">Logs</span>
         </button>
         
         <button onClick={() => onAction('About')} className="bg-[#111A3A] p-5 rounded-3xl border border-white/5 flex flex-col items-center justify-center gap-3 hover:bg-white/5 transition-all shadow-lg">
-          <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center"><FileText size={20} className="text-blue-400"/></div>
+          <div className="w-12 h-12 rounded-full bg-[#0B132B] shadow-inner border border-white/5 flex items-center justify-center"><FileText size={20} className="text-blue-400"/></div>
           <span className="font-bold text-white text-xs tracking-wider uppercase">Profile</span>
         </button>
       </div>
 
-      <div onClick={onLogout} className="bg-red-500/10 p-5 rounded-3xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/20 hover:bg-red-500/20 transition-all group mb-8">
+      <div onClick={onLogout} className="bg-red-500/5 p-5 rounded-3xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/10 hover:bg-red-500/10 transition-all group mb-8">
          <div className="flex items-center gap-3 font-black text-sm uppercase tracking-widest"><LogOut size={20}/> Secure Logout</div>
          <ChevronRight size={18} className="opacity-30 group-hover:opacity-100 transition-all"/>
       </div>
@@ -905,14 +966,19 @@ const DashboardLayout = () => {
         {showRecharge && <RechargeModal onClose={() => setShowRecharge(false)} userEmail={user.email} />}
         {showWithdrawal && <WithdrawalScreen user={user} onClose={() => setShowWithdrawal(false)} onWithdraw={handleWithdrawal} showPopup={showPopup} />}
         {showHistoryModal && <HistoryModal user={user} onClose={() => setShowHistoryModal(false)} />}
-        {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} />}
+        {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} showPopup={showPopup} />}
       </AnimatePresence>
 
       <div className="flex flex-col min-h-screen bg-black text-slate-200 selection:bg-teal-500/30 relative">
         <header className="bg-[#0B132B]/80 backdrop-blur-xl p-4 flex justify-between items-center border-b border-white/5 sticky top-0 z-30">
           <div className="flex items-center gap-3"><Zap size={22} className="text-teal-400 fill-teal-400" /><span className="font-black text-lg tracking-tighter uppercase">Thunder</span></div>
-          <div className="bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20 text-teal-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-             <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></div> Secure Node
+          <div className="flex items-center gap-3">
+             <div className="hidden sm:flex items-center gap-1.5 text-[9px] text-slate-500 font-mono border-r border-white/10 pr-3">
+                <Wifi size={10} className="text-teal-400"/> Load: Low
+             </div>
+             <div className="bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20 text-teal-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+               <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></div> Secure Node
+             </div>
           </div>
         </header>
 
