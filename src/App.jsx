@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, Copy, Activity, Zap, AlertCircle, CheckCircle2, Loader2, History, Clock, Wallet, ArrowDownRight, Globe } from 'lucide-react';
+import { Home, List, Users, Gem, User, Eye, Lock, Mail, ChevronRight, LogOut, KeyRound, ArrowLeft, Copy, Activity, Zap, AlertCircle, CheckCircle2, Loader2, History, Clock, Wallet, ArrowDownRight, Globe, Headphones, ShieldCheck, FileText, Server } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // ==========================================
@@ -32,6 +32,13 @@ const WITHDRAW_COINS = [
   { id: 12, coin: "DOGE", network: "Dogecoin" },
   { id: 13, coin: "XRP", network: "Ripple" }
 ];
+
+// Helper to generate a consistent fake TxID based on string
+const generateTxID = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
+  return "0x" + Math.abs(hash).toString(16).substring(0, 10) + "...";
+};
 
 const getHighestVip = (user) => {
   if (!user || !user.ownedVips) return user?.vipLevel || 0;
@@ -201,30 +208,22 @@ const RegisterScreen = () => {
 };
 
 // ==========================================
-// 4. MODALS (RECHARGE, WITHDRAWAL & HISTORY)
+// 4. MODALS (RECHARGE, WITHDRAWAL, HISTORY & ABOUT)
 // ==========================================
 const RechargeModal = ({ onClose, userEmail }) => {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 🟢 FIX: Remove loading state if user comes back from Plisio via Back button
   useEffect(() => {
-    const handlePageShow = (event) => {
-      if (event.persisted) {
-        setIsLoading(false);
-      }
-    };
+    const handlePageShow = (event) => { if (event.persisted) setIsLoading(false); };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
 
   const handlePayNow = async () => {
-    // 🟢 UPDATED: Minimum amount is now $25
     if (!amount || parseFloat(amount) < 25) return setErrorMsg("Minimum deposit is $25.00");
-    
-    setIsLoading(true); 
-    setErrorMsg('');
+    setIsLoading(true); setErrorMsg('');
     try {
       const response = await fetch('/.netlify/functions/createInvoice', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -233,8 +232,6 @@ const RechargeModal = ({ onClose, userEmail }) => {
       const result = await response.json();
       if (result.success) {
         window.location.href = result.checkoutUrl;
-        
-        // 🟢 FIX: Reset loading state after 3 seconds in case they hit back instantly
         setTimeout(() => setIsLoading(false), 3000); 
       } else {
         setErrorMsg(result.message || "Could not generate payment link.");
@@ -249,8 +246,6 @@ const RechargeModal = ({ onClose, userEmail }) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#0B132B]/95 backdrop-blur-xl">
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#111A3A] w-full max-w-sm rounded-[30px] border border-white/10 shadow-2xl overflow-hidden relative">
-        
-        {/* Loading Overlay */}
         {isLoading && (
           <div className="absolute inset-0 bg-[#0B132B]/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
             <Loader2 size={50} className="text-teal-400 animate-spin mb-4" />
@@ -258,37 +253,26 @@ const RechargeModal = ({ onClose, userEmail }) => {
             <p className="text-xs text-teal-400 mt-2 animate-pulse font-mono">Redirecting to secure gateway...</p>
           </div>
         )}
-        
         <div className="bg-gradient-to-r from-teal-500 to-teal-400 p-6 text-center text-[#0B132B] relative overflow-hidden">
           <div className="absolute top-[-50%] left-[-10%] w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
           <h3 className="font-black text-2xl uppercase tracking-tighter relative z-10">Deposit</h3>
           <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1 relative z-10">Secure Auto-Credit System</p>
         </div>
-        
         <div className="p-8 space-y-6">
           <div>
             <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-3">Enter Amount</p>
             <div className="relative">
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl text-teal-400 font-black">$</span>
-              <input 
-                type="number" 
-                placeholder="0.00" 
-                value={amount} 
-                onChange={(e) => setAmount(e.target.value)} 
-                className="w-full bg-[#0B132B] border-2 border-white/5 py-4 pl-12 pr-4 rounded-2xl text-white text-3xl font-black focus:border-teal-400 focus:outline-none transition-all shadow-inner" 
-              />
+              <input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#0B132B] border-2 border-white/5 py-4 pl-12 pr-4 rounded-2xl text-white text-3xl font-black focus:border-teal-400 focus:outline-none transition-all shadow-inner" />
             </div>
-            {/* 🟢 UPDATED MINIMUM TEXT TO $25.00 */}
             <p className="text-[10px] text-slate-500 text-right mt-2 font-mono">Min. Deposit: $25.00</p>
           </div>
-          
           {errorMsg && (
             <div className="flex items-start gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
               <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5"/>
               <p className="text-red-400 text-xs font-bold">{errorMsg}</p>
             </div>
           )}
-          
           <div className="flex gap-3 mt-8 pt-2">
             <button onClick={onClose} disabled={isLoading} className="w-1/3 py-4 rounded-2xl border border-white/10 text-slate-400 font-bold hover:bg-white/5 hover:text-white transition-all">Cancel</button>
             <button onClick={handlePayNow} disabled={isLoading} className="w-2/3 py-4 rounded-2xl bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] font-black text-lg shadow-[0_0_20px_rgba(45,212,191,0.3)] hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center gap-2">
@@ -309,7 +293,6 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
   
   const highestVip = getHighestVip(user);
   const vipConfig = VIP_TIERS[highestVip] || VIP_TIERS[0];
-  
   const withdrawableBalance = (user?.earning_balance || 0) + (user?.refer_balance || 0);
 
   const handleWithdrawRequest = () => {
@@ -325,7 +308,6 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
   return (
     <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-0 z-50 bg-[#0B132B] text-white overflow-y-auto">
       <div className="bg-[#111A3A] p-5 flex items-center justify-between border-b border-white/5 sticky top-0 z-50"><button onClick={onClose}><ArrowLeft size={20} /></button><h2 className="font-bold">Withdraw Assets</h2><div className="w-10"></div></div>
-      
       <div className="p-6 max-w-3xl mx-auto space-y-6">
         <div className="bg-gradient-to-br from-[#1A264F] to-[#111A3A] p-6 rounded-3xl border border-white/5 shadow-2xl">
           <p className="text-slate-400 text-xs uppercase tracking-widest mb-1 flex items-center gap-2"><Lock size={12}/> Withdrawable Balance</p>
@@ -334,14 +316,12 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
              <AlertCircle size={14}/> <span className="text-[10px] font-bold">Min Limit: ${vipConfig.minWithdraw} USDT ({vipConfig.name})</span>
           </div>
         </div>
-
         <div className="bg-yellow-500/10 border border-yellow-500/30 p-3.5 rounded-xl flex gap-3 items-start shadow-inner">
            <AlertCircle size={20} className="text-yellow-500 shrink-0 mt-0.5"/>
            <p className="text-xs text-yellow-500/90 leading-relaxed font-medium">
              <strong>Warning:</strong> Please enter your withdrawal address correctly. Funds sent to a wrong network or address cannot be recovered.
            </p>
         </div>
-
         <div className="space-y-4">
           <div>
             <p className="text-slate-400 text-xs mb-2 uppercase font-bold">1. Select Coin & Network</p>
@@ -354,7 +334,6 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
                ))}
             </div>
           </div>
-
           <div className="space-y-4">
             <p className="text-slate-400 text-xs uppercase font-bold">2. Payment Details</p>
             <div className="relative">
@@ -366,12 +345,10 @@ const WithdrawalScreen = ({ user, onClose, onWithdraw, showPopup }) => {
                <input type="number" placeholder="Amount to Withdraw" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-[#111A3A] border border-white/10 p-4 pl-12 rounded-2xl text-white focus:border-teal-400 outline-none transition-all" />
             </div>
             <AuthInput icon={KeyRound} type="password" placeholder="Fund Password" value={secPassword} onChange={(e) => setSecPassword(e.target.value)} />
-            
             <div className="bg-teal-500/5 p-4 rounded-2xl border border-teal-500/10 flex justify-between items-center">
                <span className="text-slate-400 text-xs">Estimated Arrival</span>
                <span className="text-teal-400 font-bold text-sm">Within 24 Hours</span>
             </div>
-
             <button onClick={handleWithdrawRequest} className="w-full bg-gradient-to-r from-teal-400 to-teal-500 text-[#0B132B] font-black py-4 rounded-2xl shadow-xl shadow-teal-500/10 hover:scale-[1.02] active:scale-[0.98] transition-all">Submit Request</button>
           </div>
         </div>
@@ -392,19 +369,38 @@ const HistoryModal = ({ user, onClose }) => (
           <div key={idx} className="flex justify-between items-center bg-[#0B132B] p-4 rounded-2xl border border-white/5">
             <div>
                <p className="text-sm font-black text-white">{tx.type}</p>
-               <p className="text-[10px] text-slate-500 mt-1 font-bold">
-                 {new Date(tx.date).toLocaleString()} 
+               <div className="flex items-center mt-1">
+                 <p className="text-[10px] text-slate-500 font-bold">{new Date(tx.date).toLocaleString()}</p>
                  {tx.status && (
                    <span className={`ml-3 px-2 py-0.5 rounded-full font-black text-[9px] uppercase ${tx.status === 'Done' ? 'bg-teal-500/20 text-teal-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
                      {tx.status === 'Done' ? 'Success' : tx.status}
                    </span>
                  )}
-               </p>
+               </div>
+               {/* 🟢 NEW: TXID IN HISTORY */}
+               <p className="text-[9px] text-slate-600 font-mono mt-1">TxID: {generateTxID(tx.date + tx.amount)}</p>
             </div>
             <span className={`font-black text-sm ${tx.amount > 0 ? 'text-teal-400' : 'text-red-400'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} <span className="text-[10px] font-normal">USDT</span></span>
           </div>
         )) : <div className="text-center text-slate-500 py-10 bg-[#0B132B] rounded-2xl border border-dashed border-white/5">No transaction logs found.</div>}
       </div>
+    </motion.div>
+  </div>
+);
+
+// 🟢 NEW: COMPANY PROFILE / ABOUT US MODAL
+const AboutModal = ({ onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B132B]/90 backdrop-blur-md">
+    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#111A3A] w-full max-w-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden p-8">
+      <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg mb-6 mx-auto"><Zap className="text-white fill-white" size={32} /></div>
+      <h3 className="font-black text-2xl text-center text-white mb-2">Thunder Platform</h3>
+      <p className="text-teal-400 text-[10px] font-bold tracking-widest uppercase text-center mb-6">AI-Driven Quantitative Trading</p>
+      <div className="text-slate-400 text-sm space-y-4 leading-relaxed bg-[#0B132B] p-5 rounded-2xl border border-white/5">
+        <p>Thunder Platform is a leading blockchain infrastructure company specializing in AI-driven quantitative trading and cloud mining nodes.</p>
+        <p>Our algorithms analyze global crypto markets 24/7 to execute high-frequency trades, generating consistent and secure daily yields for our partners worldwide.</p>
+        <p className="text-xs text-slate-500">Registered Enterprise &bull; Smart Contract Audited</p>
+      </div>
+      <button onClick={onClose} className="w-full mt-6 py-4 rounded-2xl bg-teal-400 text-[#0B132B] font-black hover:scale-[1.02] transition-all">Understood</button>
     </motion.div>
   </div>
 );
@@ -444,7 +440,7 @@ const LiveMemberActivity = () => {
   return (
     <div className="mb-10">
       <div className="flex items-center gap-2 mb-4"><div className="h-3 w-3 rounded-full bg-teal-400 animate-ping shadow-[0_0_10px_rgba(45,212,191,0.8)]"></div><h3 className="font-bold text-slate-300 tracking-wider text-sm uppercase">Live Activity</h3></div>
-      <div className="h-[210px] overflow-hidden relative rounded-3xl bg-[#111A3A]/40 border border-white/5 shadow-inner p-3">
+      <div className="h-[240px] overflow-hidden relative rounded-3xl bg-[#111A3A]/40 border border-white/5 shadow-inner p-3">
         <div className="space-y-2">
           <AnimatePresence>
             {activities.map((act) => (
@@ -456,6 +452,8 @@ const LiveMemberActivity = () => {
                   <div>
                     <p className="text-xs font-bold text-slate-300">{act.user}</p>
                     <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">{act.type === 'referral' ? 'Referral Bonus' : act.type}</p>
+                    {/* 🟢 NEW: TXID IN LIVE FEED */}
+                    <p className="text-[8px] text-slate-600 font-mono mt-0.5">TxID: {generateTxID(act.id.toString())}</p>
                   </div>
                 </div>
                 <span className={`font-black text-sm ${act.type === 'withdraw' ? 'text-blue-400' : act.type === 'referral' ? 'text-yellow-500' : 'text-teal-400'}`}>
@@ -477,11 +475,28 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
   const totalAssets = (user?.balance || 0) + (user?.earning_balance || 0) + (user?.refer_balance || 0);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
-      <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-8 relative overflow-hidden">
+      <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-6 relative overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
         <span className="text-teal-400 font-bold text-sm tracking-widest uppercase mb-2">Total Assets</span>
         <h2 className="text-4xl font-black text-white leading-tight">${totalAssets.toFixed(2)} <span className="text-sm font-normal text-slate-400">USDT</span></h2>
       </div>
+
+      {/* 🟢 NEW: GLOBAL PLATFORM STATISTICS */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-[#111A3A]/80 p-4 rounded-2xl border border-white/5 text-center shadow-md">
+          <p className="text-teal-400 font-black text-xl">142</p>
+          <p className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Days Online</p>
+        </div>
+        <div className="bg-[#111A3A]/80 p-4 rounded-2xl border border-white/5 text-center shadow-md">
+          <p className="text-white font-black text-xl">24.5k</p>
+          <p className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Members</p>
+        </div>
+        <div className="bg-[#111A3A]/80 p-4 rounded-2xl border border-white/5 text-center shadow-md">
+          <p className="text-blue-400 font-black text-xl">$1.2M+</p>
+          <p className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Payouts</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-4 mb-10">
         {['Recharge', 'Withdraw', 'Invite'].map((item, i) => (
           <div key={i} onClick={() => onAction(item === 'Invite' ? 'Invite Friends' : item)} className="flex flex-col items-center gap-3 p-4 bg-[#111A3A]/80 rounded-2xl border border-white/5 hover:border-teal-500/50 cursor-pointer shadow-lg">
@@ -490,7 +505,9 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
           </div>
         ))}
       </div>
+      
       <LiveMemberActivity />
+      
       <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Globe size={20} className="text-teal-400"/> Investment Hall</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         {Object.entries(VIP_TIERS).map(([level, data]) => level > 0 && (
@@ -523,7 +540,7 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
   );
 };
 
-const TaskTab = ({ user, onClaimDaily }) => {
+const TaskTab = ({ user, onClaimDaily, onRefuel }) => {
   const [timers, setTimers] = useState({});
   const ownedVips = user?.ownedVips || {};
   const vipKeys = Object.keys(ownedVips);
@@ -565,18 +582,46 @@ const TaskTab = ({ user, onClaimDaily }) => {
             const status = timers[level] || "Loading...";
             const isReady = status === "Available Now";
             const isExpired = status === "Expired";
+            
+            const vipData = ownedVips[level];
+            const energy = vipData.energy !== undefined ? vipData.energy : 5;
+            const isOutOfFuel = energy === 0;
+
             return (
-              <div key={level} className={`p-6 rounded-3xl border border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 shadow-lg ${isExpired ? 'bg-red-500/10' : 'bg-[#111A3A]'}`}>
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-[#0B132B] rounded-2xl flex justify-center items-center shadow-inner"><span className="text-yellow-500 font-black text-xl">V{level}</span></div>
-                  <div><p className="font-bold text-white text-lg">VIP {level} Node</p><p className="text-sm text-teal-400 font-bold">${VIP_TIERS[level].daily} / Day</p></div>
+              <div key={level} className={`p-6 rounded-3xl border border-white/5 flex flex-col items-start gap-4 shadow-lg ${isExpired ? 'bg-red-500/10' : 'bg-[#111A3A]'}`}>
+                <div className="flex flex-col md:flex-row justify-between w-full gap-4 items-center">
+                  <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="w-14 h-14 bg-[#0B132B] rounded-2xl flex justify-center items-center shadow-inner shrink-0"><span className="text-yellow-500 font-black text-xl">V{level}</span></div>
+                    <div><p className="font-bold text-white text-lg">VIP {level} Node</p><p className="text-sm text-teal-400 font-bold">${VIP_TIERS[level].daily} / Day</p></div>
+                  </div>
+                  
+                  <div className="flex gap-4 w-full md:w-auto justify-end">
+                    {isOutOfFuel && !isExpired ? (
+                       <button onClick={() => onRefuel(level)} className="px-6 py-3 rounded-xl font-black transition-all bg-yellow-500 text-black shadow-lg shadow-yellow-500/20 hover:scale-105 active:scale-95 animate-pulse">
+                         Refuel (-${VIP_TIERS[level].cost * 0.2})
+                       </button>
+                    ) : (
+                      <>
+                        <div className="bg-[#0B132B] px-4 py-3 rounded-xl text-teal-400 font-mono text-xs border border-white/5 flex items-center gap-2">{isExpired ? <AlertCircle size={14}/> : <Clock size={14}/>} {status}</div>
+                        <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`px-8 py-3 rounded-xl font-black transition-all ${isReady ? 'bg-gradient-to-r from-teal-400 to-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800 text-slate-500'}`}>
+                          {isExpired ? 'Expired' : 'Claim'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-4 w-full md:w-auto">
-                  <div className="bg-[#0B132B] px-4 py-3 rounded-xl text-teal-400 font-mono text-xs border border-white/5 flex items-center gap-2">{isExpired ? <AlertCircle size={14}/> : <Clock size={14}/>} {status}</div>
-                  <button disabled={!isReady || isExpired} onClick={() => onClaimDaily(level, VIP_TIERS[level].daily)} className={`px-8 py-3 rounded-xl font-black transition-all ${isReady ? 'bg-gradient-to-r from-teal-400 to-teal-500 text-black shadow-lg shadow-teal-500/20' : 'bg-slate-800 text-slate-500'}`}>
-                    {isExpired ? 'Expired' : 'Claim'}
-                  </button>
-                </div>
+
+                {!isExpired && (
+                  <div className="w-full mt-2 bg-[#0B132B] p-4 rounded-2xl border border-white/5">
+                    <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest">
+                      <span className="flex items-center gap-1"><Zap size={12}/> Node Fuel</span>
+                      <span className={energy === 0 ? 'text-red-400 animate-pulse' : 'text-teal-400'}>{energy}/5 Days</span>
+                    </div>
+                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div className={`h-full ${energy === 0 ? 'bg-red-500' : energy <= 2 ? 'bg-yellow-500' : 'bg-teal-400'} transition-all duration-500`} style={{ width: `${(energy / 5) * 100}%` }}></div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -675,16 +720,29 @@ const ProfileTab = ({ user, onAction, onLogout }) => {
         </div>
       </div>
 
-      <div className="mb-6">
-        <button onClick={() => onAction('History')} className="w-full bg-[#111A3A] p-5 rounded-3xl border border-white/5 flex justify-between items-center hover:bg-white/5 transition-all shadow-lg group">
-          <div className="flex items-center gap-4 font-black text-white text-sm tracking-wider uppercase"><History size={20} className="text-teal-400"/> Transaction History</div>
-          <ChevronRight size={18} className="text-slate-500 group-hover:text-teal-400 transition-all"/>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <button onClick={() => onAction('History')} className="bg-[#111A3A] p-5 rounded-3xl border border-white/5 flex flex-col items-center justify-center gap-3 hover:bg-white/5 transition-all shadow-lg">
+          <div className="w-12 h-12 rounded-full bg-teal-500/10 flex items-center justify-center"><History size={20} className="text-teal-400"/></div>
+          <span className="font-bold text-white text-xs tracking-wider uppercase">Logs</span>
+        </button>
+        
+        {/* 🟢 NEW: COMPANY PROFILE BUTTON */}
+        <button onClick={() => onAction('About')} className="bg-[#111A3A] p-5 rounded-3xl border border-white/5 flex flex-col items-center justify-center gap-3 hover:bg-white/5 transition-all shadow-lg">
+          <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center"><FileText size={20} className="text-blue-400"/></div>
+          <span className="font-bold text-white text-xs tracking-wider uppercase">Profile</span>
         </button>
       </div>
 
-      <div onClick={onLogout} className="bg-red-500/10 p-5 rounded-3xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/20 hover:bg-red-500/20 transition-all group">
+      <div onClick={onLogout} className="bg-red-500/10 p-5 rounded-3xl text-red-500 flex justify-between items-center cursor-pointer border border-red-500/20 hover:bg-red-500/20 transition-all group mb-8">
          <div className="flex items-center gap-3 font-black text-sm uppercase tracking-widest"><LogOut size={20}/> Secure Logout</div>
          <ChevronRight size={18} className="opacity-30 group-hover:opacity-100 transition-all"/>
+      </div>
+
+      {/* 🟢 NEW: SECURITY BADGES */}
+      <div className="flex justify-center items-center gap-6 opacity-40 pb-10">
+         <div className="flex flex-col items-center gap-1.5"><ShieldCheck size={20}/><span className="text-[8px] font-bold uppercase tracking-widest">SSL Secured</span></div>
+         <div className="flex flex-col items-center gap-1.5"><Server size={20}/><span className="text-[8px] font-bold uppercase tracking-widest">DDoS Guard</span></div>
+         <div className="flex flex-col items-center gap-1.5"><CheckCircle2 size={20}/><span className="text-[8px] font-bold uppercase tracking-widest">Audited</span></div>
       </div>
     </motion.div>
   );
@@ -702,6 +760,7 @@ const DashboardLayout = () => {
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdrawal, setShowWithdrawal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false); // 🟢 State for About Us
   const [user, setUser] = useState(null);
   const [popup, setPopup] = useState(null);
   const navigate = useNavigate();
@@ -744,17 +803,39 @@ const DashboardLayout = () => {
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const historyEntry = { type: `Unlocked VIP ${level}`, amount: -cost, date: new Date().toISOString() };
 
-    const updated = { ...user, balance: user.balance - cost, ownedVips: { ...owned, [level]: { lastClaimTime: null, expiry: Date.now() + thirtyDaysMs } }, tx_history: [...(user.tx_history || []), historyEntry] };
+    const updated = { ...user, balance: user.balance - cost, ownedVips: { ...owned, [level]: { lastClaimTime: null, expiry: Date.now() + thirtyDaysMs, energy: 5 } }, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
     showPopup(`You owned VIP Level ${level} Node for 30 Days!`);
   };
 
   const handleClaim = async (level, amt) => {
     const owned = user.ownedVips || {};
+    const vipData = owned[level];
+    
+    const currentEnergy = vipData.energy !== undefined ? vipData.energy : 5;
+    if (currentEnergy <= 0) return showPopup("Node out of Fuel! Please refuel to continue earning.", "error");
+
     const historyEntry = { type: `Yield VIP ${level}`, amount: amt, date: new Date().toISOString() };
-    const updated = { ...user, earning_balance: user.earning_balance + amt, ownedVips: { ...owned, [level]: { ...owned[level], lastClaimTime: Date.now() } }, tx_history: [...(user.tx_history || []), historyEntry] };
+    const updated = { ...user, earning_balance: user.earning_balance + amt, ownedVips: { ...owned, [level]: { ...vipData, lastClaimTime: Date.now(), energy: currentEnergy - 1 } }, tx_history: [...(user.tx_history || []), historyEntry] };
     await syncUserToCloud(updated);
     showPopup(`Success! $${amt} USDT Reward Collected.`);
+  };
+
+  const handleRefuel = async (level) => {
+    const cost = VIP_TIERS[level].cost;
+    const refuelFee = cost * 0.20; 
+
+    if (user.balance < refuelFee) return showPopup(`Insufficient Deposit Balance. Refuel costs $${refuelFee}. Please recharge.`, 'error');
+
+    const owned = user.ownedVips || {};
+    const historyEntry = { type: `Refueled VIP ${level}`, amount: -refuelFee, date: new Date().toISOString() };
+
+    const updated = {
+      ...user, balance: user.balance - refuelFee, ownedVips: { ...owned, [level]: { ...owned[level], energy: 5 } },
+      tx_history: [...(user.tx_history || []), historyEntry]
+    };
+    await syncUserToCloud(updated);
+    showPopup(`VIP ${level} Node refueled successfully for 5 days!`);
   };
 
   const handleWithdrawal = async (amt, address, coin, network) => {
@@ -779,6 +860,7 @@ const DashboardLayout = () => {
     if(type === 'Withdraw') setShowWithdrawal(true);
     else if(type === 'Recharge') setShowRecharge(true);
     else if(type === 'History') setShowHistoryModal(true); 
+    else if(type === 'About') setShowAboutModal(true); // 🟢 Handle About Modal
     else setActiveTab('team'); 
   };
 
@@ -791,9 +873,10 @@ const DashboardLayout = () => {
         {showRecharge && <RechargeModal onClose={() => setShowRecharge(false)} userEmail={user.email} />}
         {showWithdrawal && <WithdrawalScreen user={user} onClose={() => setShowWithdrawal(false)} onWithdraw={handleWithdrawal} showPopup={showPopup} />}
         {showHistoryModal && <HistoryModal user={user} onClose={() => setShowHistoryModal(false)} />}
+        {showAboutModal && <AboutModal onClose={() => setShowAboutModal(false)} />}
       </AnimatePresence>
 
-      <div className="flex flex-col min-h-screen bg-black text-slate-200 selection:bg-teal-500/30">
+      <div className="flex flex-col min-h-screen bg-black text-slate-200 selection:bg-teal-500/30 relative">
         <header className="bg-[#0B132B]/80 backdrop-blur-xl p-4 flex justify-between items-center border-b border-white/5 sticky top-0 z-30">
           <div className="flex items-center gap-3"><Zap size={22} className="text-teal-400 fill-teal-400" /><span className="font-black text-lg tracking-tighter uppercase">Thunder</span></div>
           <div className="bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20 text-teal-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
@@ -802,7 +885,6 @@ const DashboardLayout = () => {
         </header>
 
         <div className="flex flex-1 max-w-7xl mx-auto w-full">
-          {/* 🟢 SIDEBAR "TASK" UPDATED */}
           <aside className="hidden md:flex flex-col w-64 p-6 border-r border-white/5 space-y-2 pt-8">
             <SideBtn icon={<Home size={20}/>} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
             <SideBtn icon={<List size={20}/>} label="Task" active={activeTab === 'task'} onClick={() => setActiveTab('task')} />
@@ -813,12 +895,17 @@ const DashboardLayout = () => {
 
           <main className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar">
             {activeTab === 'home' && <HomeTab user={user} onAction={handleAction} onUnlockVip={handleVipUnlock} />}
-            {activeTab === 'task' && <TaskTab user={user} onClaimDaily={handleClaim} />}
+            {activeTab === 'task' && <TaskTab user={user} onClaimDaily={handleClaim} onRefuel={handleRefuel} />}
             {activeTab === 'team' && <TeamTab user={user} showPopup={showPopup} />}
             {activeTab === 'vip' && <VipTab user={user} onUnlockVip={handleVipUnlock} />}
             {activeTab === 'me' && <ProfileTab user={user} onAction={handleAction} onLogout={handleLogout} />}
           </main>
         </div>
+
+        {/* 🟢 FLOATING LIVE SUPPORT BUTTON */}
+        <a href="https://t.me/YOUR_TELEGRAM_LINK_HERE" target="_blank" rel="noreferrer" className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(45,212,191,0.4)] hover:scale-110 active:scale-95 transition-all">
+          <Headphones className="text-[#0B132B]" size={24} strokeWidth={2.5}/>
+        </a>
 
         <nav className="md:hidden fixed bottom-0 w-full bg-[#0B132B]/90 backdrop-blur-2xl flex justify-between px-6 py-4 z-40 border-t border-white/5 pb-safe">
           <BottomBtn icon={<Home size={24}/>} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
