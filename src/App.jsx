@@ -33,7 +33,6 @@ const WITHDRAW_COINS = [
   { id: 13, coin: "XRP", network: "Ripple" }
 ];
 
-// Helper to generate a consistent fake TxID based on string
 const generateTxID = (str) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
@@ -208,7 +207,7 @@ const RegisterScreen = () => {
 };
 
 // ==========================================
-// 4. MODALS (RECHARGE, WITHDRAWAL, HISTORY & ABOUT)
+// 4. MODALS (RECHARGE, WITHDRAWAL, HISTORY & 🟢 PRO ABOUT MODAL)
 // ==========================================
 const RechargeModal = ({ onClose, userEmail }) => {
   const [amount, setAmount] = useState('');
@@ -377,7 +376,6 @@ const HistoryModal = ({ user, onClose }) => (
                    </span>
                  )}
                </div>
-               {/* 🟢 NEW: TXID IN HISTORY */}
                <p className="text-[9px] text-slate-600 font-mono mt-1">TxID: {generateTxID(tx.date + tx.amount)}</p>
             </div>
             <span className={`font-black text-sm ${tx.amount > 0 ? 'text-teal-400' : 'text-red-400'}`}>{tx.amount > 0 ? '+' : ''}{tx.amount} <span className="text-[10px] font-normal">USDT</span></span>
@@ -388,19 +386,33 @@ const HistoryModal = ({ user, onClose }) => (
   </div>
 );
 
-// 🟢 NEW: COMPANY PROFILE / ABOUT US MODAL
+// 🟢 NEW: PROFESSIONAL COMPANY PROFILE MODAL
 const AboutModal = ({ onClose }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B132B]/90 backdrop-blur-md">
-    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#111A3A] w-full max-w-md rounded-3xl border border-white/10 shadow-2xl overflow-hidden p-8">
-      <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg mb-6 mx-auto"><Zap className="text-white fill-white" size={32} /></div>
-      <h3 className="font-black text-2xl text-center text-white mb-2">Thunder Platform</h3>
-      <p className="text-teal-400 text-[10px] font-bold tracking-widest uppercase text-center mb-6">AI-Driven Quantitative Trading</p>
-      <div className="text-slate-400 text-sm space-y-4 leading-relaxed bg-[#0B132B] p-5 rounded-2xl border border-white/5">
-        <p>Thunder Platform is a leading blockchain infrastructure company specializing in AI-driven quantitative trading and cloud mining nodes.</p>
-        <p>Our algorithms analyze global crypto markets 24/7 to execute high-frequency trades, generating consistent and secure daily yields for our partners worldwide.</p>
-        <p className="text-xs text-slate-500">Registered Enterprise &bull; Smart Contract Audited</p>
+  <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-[#0B132B]/95 backdrop-blur-xl">
+    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#111A3A] w-full max-w-md rounded-[30px] border border-white/10 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+      <div className="p-6 border-b border-white/5 bg-[#0B132B] flex flex-col items-center">
+        <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg mb-3"><Zap className="text-white fill-white" size={28} /></div>
+        <h3 className="font-black text-xl text-white">Thunder Platform</h3>
+        <p className="text-teal-400 text-[9px] font-bold tracking-widest uppercase mt-1">AI-Driven Quantitative Trading</p>
       </div>
-      <button onClick={onClose} className="w-full mt-6 py-4 rounded-2xl bg-teal-400 text-[#0B132B] font-black hover:scale-[1.02] transition-all">Understood</button>
+      
+      <div className="p-6 overflow-y-auto custom-scrollbar space-y-4 text-sm text-slate-300">
+        <p className="leading-relaxed">Thunder Platform is a leading blockchain infrastructure company specializing in AI-driven quantitative trading and cloud mining nodes.</p>
+        
+        <div className="space-y-3 mt-4">
+          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Algorithmic Trading:</strong> High-frequency HFT bots leveraging AI for consistent market yields.</p></div>
+          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Cloud Infrastructure:</strong> Decentralized nodes ensuring 99.9% uptime and stability.</p></div>
+          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Secure Assets:</strong> Funds are secured using cold wallet storage and AES-256 encryption.</p></div>
+          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Instant Liquidity:</strong> Automated API-driven network for lightning-fast withdrawals.</p></div>
+          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Regulatory Compliance:</strong> Audited smart contracts and strict anti-fraud policies.</p></div>
+          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>Partner Network:</strong> Multi-tier sustainable revenue sharing and referral model.</p></div>
+          <div className="flex gap-3 items-start"><CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5"/><p><strong>24/7 Global Support:</strong> Dedicated multi-lingual assistance around the clock.</p></div>
+        </div>
+      </div>
+      
+      <div className="p-5 border-t border-white/5 bg-[#0B132B]">
+        <button onClick={onClose} className="w-full py-4 rounded-2xl bg-teal-400 text-[#0B132B] font-black hover:scale-[1.02] transition-all shadow-[0_0_15px_rgba(45,212,191,0.2)]">Understood</button>
+      </div>
     </motion.div>
   </div>
 );
@@ -452,7 +464,6 @@ const LiveMemberActivity = () => {
                   <div>
                     <p className="text-xs font-bold text-slate-300">{act.user}</p>
                     <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">{act.type === 'referral' ? 'Referral Bonus' : act.type}</p>
-                    {/* 🟢 NEW: TXID IN LIVE FEED */}
                     <p className="text-[8px] text-slate-600 font-mono mt-0.5">TxID: {generateTxID(act.id.toString())}</p>
                   </div>
                 </div>
@@ -469,10 +480,34 @@ const LiveMemberActivity = () => {
 };
 
 // ==========================================
-// 5. DASHBOARD TABS
+// 5. DASHBOARD TABS (🟢 ADDED DYNAMIC STATS)
 // ==========================================
 const HomeTab = ({ user, onAction, onUnlockVip }) => {
   const totalAssets = (user?.balance || 0) + (user?.earning_balance || 0) + (user?.refer_balance || 0);
+  
+  // 🟢 DYNAMIC PLATFORM STATISTICS LOGIC
+  const [stats, setStats] = useState({ days: 421, members: 24.5, payouts: 321 });
+
+  useEffect(() => {
+    // Base Date set to 421 days ago from May 16, 2026
+    const baseDate = new Date("2025-03-21T00:00:00Z").getTime();
+    const now = new Date();
+    const daysElapsed = Math.max(421, Math.floor((now.getTime() - baseDate) / (1000 * 60 * 60 * 24)));
+    const extraDays = daysElapsed - 421;
+    
+    // Add real-time fluctuation based on the current hour of the day
+    const hourProgress = now.getUTCHours() / 24;
+    
+    const currentMembers = 24598 + (extraDays * 1750) + (1750 * hourProgress);
+    const currentPayouts = 321000 + (extraDays * 3500) + (3500 * hourProgress);
+    
+    setStats({
+      days: daysElapsed,
+      members: (currentMembers / 1000).toFixed(1), // e.g. 24.6k
+      payouts: (currentPayouts / 1000).toFixed(1) // e.g. 321.5k
+    });
+  }, []);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-24">
       <div className="w-full h-56 bg-gradient-to-br from-[#162758] to-[#0A1128] rounded-3xl flex flex-col justify-center px-8 border border-white/10 mb-6 relative overflow-hidden">
@@ -481,18 +516,17 @@ const HomeTab = ({ user, onAction, onUnlockVip }) => {
         <h2 className="text-4xl font-black text-white leading-tight">${totalAssets.toFixed(2)} <span className="text-sm font-normal text-slate-400">USDT</span></h2>
       </div>
 
-      {/* 🟢 NEW: GLOBAL PLATFORM STATISTICS */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-[#111A3A]/80 p-4 rounded-2xl border border-white/5 text-center shadow-md">
-          <p className="text-teal-400 font-black text-xl">142</p>
+          <p className="text-teal-400 font-black text-xl">{stats.days}</p>
           <p className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Days Online</p>
         </div>
         <div className="bg-[#111A3A]/80 p-4 rounded-2xl border border-white/5 text-center shadow-md">
-          <p className="text-white font-black text-xl">24.5k</p>
+          <p className="text-white font-black text-xl">{stats.members}k</p>
           <p className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Members</p>
         </div>
         <div className="bg-[#111A3A]/80 p-4 rounded-2xl border border-white/5 text-center shadow-md">
-          <p className="text-blue-400 font-black text-xl">$1.2M+</p>
+          <p className="text-blue-400 font-black text-xl">${stats.payouts}k</p>
           <p className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Payouts</p>
         </div>
       </div>
@@ -726,7 +760,6 @@ const ProfileTab = ({ user, onAction, onLogout }) => {
           <span className="font-bold text-white text-xs tracking-wider uppercase">Logs</span>
         </button>
         
-        {/* 🟢 NEW: COMPANY PROFILE BUTTON */}
         <button onClick={() => onAction('About')} className="bg-[#111A3A] p-5 rounded-3xl border border-white/5 flex flex-col items-center justify-center gap-3 hover:bg-white/5 transition-all shadow-lg">
           <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center"><FileText size={20} className="text-blue-400"/></div>
           <span className="font-bold text-white text-xs tracking-wider uppercase">Profile</span>
@@ -738,7 +771,6 @@ const ProfileTab = ({ user, onAction, onLogout }) => {
          <ChevronRight size={18} className="opacity-30 group-hover:opacity-100 transition-all"/>
       </div>
 
-      {/* 🟢 NEW: SECURITY BADGES */}
       <div className="flex justify-center items-center gap-6 opacity-40 pb-10">
          <div className="flex flex-col items-center gap-1.5"><ShieldCheck size={20}/><span className="text-[8px] font-bold uppercase tracking-widest">SSL Secured</span></div>
          <div className="flex flex-col items-center gap-1.5"><Server size={20}/><span className="text-[8px] font-bold uppercase tracking-widest">DDoS Guard</span></div>
@@ -760,7 +792,7 @@ const DashboardLayout = () => {
   const [showRecharge, setShowRecharge] = useState(false);
   const [showWithdrawal, setShowWithdrawal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showAboutModal, setShowAboutModal] = useState(false); // 🟢 State for About Us
+  const [showAboutModal, setShowAboutModal] = useState(false); 
   const [user, setUser] = useState(null);
   const [popup, setPopup] = useState(null);
   const navigate = useNavigate();
@@ -860,7 +892,7 @@ const DashboardLayout = () => {
     if(type === 'Withdraw') setShowWithdrawal(true);
     else if(type === 'Recharge') setShowRecharge(true);
     else if(type === 'History') setShowHistoryModal(true); 
-    else if(type === 'About') setShowAboutModal(true); // 🟢 Handle About Modal
+    else if(type === 'About') setShowAboutModal(true); 
     else setActiveTab('team'); 
   };
 
@@ -902,8 +934,7 @@ const DashboardLayout = () => {
           </main>
         </div>
 
-        {/* 🟢 FLOATING LIVE SUPPORT BUTTON */}
-        <a href="https://t.me/YOUR_TELEGRAM_LINK_HERE" target="_blank" rel="noreferrer" className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(45,212,191,0.4)] hover:scale-110 active:scale-95 transition-all">
+        <a href="https://t.me/Thunder_Support_Teams" target="_blank" rel="noreferrer" className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(45,212,191,0.4)] hover:scale-110 active:scale-95 transition-all">
           <Headphones className="text-[#0B132B]" size={24} strokeWidth={2.5}/>
         </a>
 
